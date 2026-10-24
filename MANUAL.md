@@ -10,8 +10,8 @@ Each cup is self-sufficient: it senses, computes its Five Elements colour, and g
 
 ### The shared spec (the artwork's logic, one truth in two languages)
 
-- `src/fiveElements.ts` is the Five Elements (오행) mapping engine: pressure, trend, pulse, regularity, and hold become an element and a colour. This file is also the system description for the paper.
-- `src/sync.ts` is the collective layer: the synchronisation score, the room colour, and the 상생 generating-cycle circulation reading (score, flow edges, chain).
+- `src/fiveElements.ts` is the Five Elements (五行) mapping engine: pressure, trend, pulse, regularity, and hold become an element and a colour. This file is also the system description for the paper.
+- `src/sync.ts` is the collective layer: the synchronisation score, the room colour, and the generating-cycle (相生) circulation reading (score, flow edges, chain).
 - `hardware/cup/cup.ino` is the C++ mirror of the engine plus the presence and afterglow behaviour, running on the cup itself.
 
 Rule: if you change the mapping, change it in `src/fiveElements.ts` AND `cup.ino` together (ask Claude to do both in one pass). If the browser and the cup ever disagree, the project's core claim breaks.
@@ -35,7 +35,7 @@ Rule: if you change the mapping, change it in `src/fiveElements.ts` AND `cup.ino
 
 ### The collective layer (after three cups exist)
 
-- `hub/hub.ts` is the sync hub: it listens to all cups over OSC (port 8000), computes sync and the room colour, republishes to TouchDesigner (port 9000), and logs every tick to `logs/session-*.jsonl`. Those logs are the paper's dataset and the 계 archive feed. Runs on your laptop with `npm run hub`.
+- `hub/hub.ts` is the sync hub: it listens to all cups over OSC (port 8000), computes sync and the room colour, republishes to TouchDesigner (port 9000), and logs every tick to `logs/session-*.jsonl`. Those logs are the paper's dataset and the Oryn archive feed. Runs on your laptop with `npm run hub`.
 - `hub/README.md` explains its ports and message schema.
 - `touchdesigner/RECIPES.md` is your from-zero TouchDesigner path, one concrete artifact per recipe, ending at a festival-ready show patch. TD sits above the hub and is optional by design.
 

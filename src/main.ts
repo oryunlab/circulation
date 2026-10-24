@@ -4,7 +4,7 @@ import { rgbCss, createCupPanel, ctl, createFlow, createCupVisual, stepCupVisual
 
 // Browser simulator for Circulation. Three virtual cups run the real Five
 // Elements engine, the real synchronisation metric, and the real generating-
-// cycle (상생) circulation reading, so the interaction can be designed and tuned
+// cycle (相生) circulation reading, so the interaction can be designed and tuned
 // before any hardware exists (and this ships on the site as living
 // documentation). Pressure trend and sustained-hold are derived from how you
 // move the sliders over time, exactly as they will be on the cup.
