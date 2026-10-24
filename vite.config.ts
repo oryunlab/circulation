@@ -13,6 +13,7 @@ export default defineConfig({
         manual: './circulation/manual.html',
         design: './circulation/design.html',
         toolkit: './circulation/toolkit.html',
+        brand: './brand/index.html',
       },
     },
   },
