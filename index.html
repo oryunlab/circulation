@@ -11,10 +11,10 @@
 <meta property="og:url" content="https://circulatorysensing.com/">
 <meta property="og:image" content="https://circulatorysensing.com/og-image.png">
 <meta name="twitter:card" content="summary_large_image">
-<meta name="theme-color" content="#f3efe7">
+<meta name="theme-color" content="#101418">
 <script>
-  // light paper by default; the toggle in the top bar switches to dark and is remembered
-  try { document.documentElement.dataset.theme = localStorage.getItem('cs-theme') || 'light'; } catch (e) { document.documentElement.dataset.theme = 'light'; }
+  // night by default, as the brand is; the toggle in the top bar switches to paper and is remembered
+  try { document.documentElement.dataset.theme = localStorage.getItem('cs-theme') || 'dark'; } catch (e) { document.documentElement.dataset.theme = 'dark'; }
 </script>
 <link rel="icon" href="/brand/circulatory-sensing-app-icon.svg" type="image/svg+xml">
 <link rel="apple-touch-icon" href="/brand/circulatory-sensing-apple-touch-icon-180.png">
@@ -22,12 +22,13 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;1,400&family=Be+Vietnam+Pro:wght@300;400;500&family=Noto+Serif+TC:wght@300;400&display=swap">
 <style>
-/* Home of the research programme. Same ground and palette as Circulation, the foundation project, but
-   laid out differently on purpose: the five rings of Oryun with the subtitle beneath (the name is in the top bar) (src/cycle.js, one ring per element
-   instead of light converging on the Hap), then a numbered index of sections. */
+/* Home of the research programme, in its brand: night first, the Circulatory Sensing mark alive in the hero
+   (src/orbit.js: the five-petal knot held in an orbit whose colour flows Fire → purple → Water), and that same
+   gradient as the only accent. Then a numbered index of sections. Brand reference: /brand/. */
 :root {
   color-scheme: dark;
-  --ground: #0b0f14; --sheet: #121820; --ink: #eef1ef; --soft: #9aa6a8; --body-ink: #c9d1d0; --line: #26313a; --g: 11,15,20;
+  --ground: #101418; --sheet: #161c23; --ink: #eef1ef; --soft: #9aa6a8; --body-ink: #c9d1d0; --line: #26313a; --g: 16,20,24;
+  --cs-fire: #ff2d55; --cs-ja: #ad55ff; --cs-water: #2979ff;
   --wood: #6cc27a; --fire: #f0645a; --earth: #f0c24a; --metal: #e9edf0; --water: #5b95dc;
   --display: "Cormorant Garamond", "Noto Serif TC", Georgia, serif;
   --body: "Be Vietnam Pro", "Helvetica Neue", Arial, sans-serif;
@@ -36,12 +37,14 @@
   color-scheme: light;
   --ground: #f3efe7; --sheet: #fbf9f4; --ink: #1c2227; --soft: #6c7378; --body-ink: #3a4247; --line: #ddd5c6; --g: 243,239,231;
   --wood: #3f9a52; --fire: #d9473d; --earth: #c99a1c; --metal: #9aa3a9; --water: #2f6fc0;
+  --cs-fire: #db2b4e; --cs-ja: #6d2db5; --cs-water: #276bdc;
 }
 * { box-sizing: border-box; }
+:root { --flow: linear-gradient(90deg, var(--cs-fire), var(--cs-ja), var(--cs-water)); }
 html { background: var(--ground); scroll-behavior: smooth; }
 body { margin: 0; background: var(--ground); color: var(--ink); font-family: var(--body); font-size: 16px; font-weight: 300; line-height: 1.65; -webkit-font-smoothing: antialiased; }
-a { color: inherit; text-decoration-color: var(--earth); text-underline-offset: 4px; }
-a:focus-visible, button:focus-visible { outline: 2px solid var(--earth); outline-offset: 3px; }
+a { color: inherit; text-decoration-color: var(--cs-ja); text-underline-offset: 4px; }
+a:focus-visible, button:focus-visible { outline: 2px solid var(--cs-ja); outline-offset: 3px; }
 p { margin: 0; }
 .gutter { padding-left: max(20px, env(safe-area-inset-left, 0px)); padding-right: max(20px, env(safe-area-inset-right, 0px)); }
 .wrap { max-width: 1120px; margin: 0 auto; }
@@ -54,7 +57,9 @@ h3 { font-size: 27px; line-height: 1.15; font-weight: 500; }
 .bar { position: absolute; top: 0; left: 0; right: 0; z-index: 3; padding-top: calc(env(safe-area-inset-top, 0px) + 18px); }
 .bar .wrap { display: flex; justify-content: space-between; align-items: center; gap: 16px; flex-wrap: wrap; }
 .mark { display: inline-flex; align-items: center; gap: 10px; text-decoration: none; }
-.mark img { width: 26px; height: 26px; }
+.mark img { width: 30px; height: 30px; }
+.mark .mk-paper, :root[data-theme="light"] .mark .mk-night { display: none; }
+:root[data-theme="light"] .mark .mk-paper { display: block; }
 .mark span { font-family: var(--display); font-weight: 500; font-size: 22px; }
 .bar nav { display: flex; gap: 22px; flex-wrap: wrap; font-size: 14px; }
 .bar nav a { text-decoration: none; color: var(--soft); }
@@ -75,10 +80,9 @@ h3 { font-size: 27px; line-height: 1.15; font-weight: 500; }
 .vh { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
 .hero h1:not(.vh) { font-size: clamp(38px, 6.6vw, 92px); line-height: 1; font-weight: 400; letter-spacing: .1em; text-transform: uppercase; margin-right: -.1em; }
 .hero .sub { font-family: var(--display); font-style: italic; font-size: clamp(22px, 2.8vw, 34px); line-height: 1.3; max-width: 36ch; color: var(--body-ink); }
-.stripe { display: flex; height: 3px; width: 140px; border-radius: 2px; overflow: hidden; margin-block: 4px; }
-.stripe i { flex: 1; }
+.stripe { height: 2px; width: 140px; border-radius: 2px; margin-block: 4px; background: var(--flow); }
 .down { position: absolute; left: 50%; bottom: calc(env(safe-area-inset-bottom, 0px) + 28px); width: 1px; height: 56px; overflow: hidden; background: var(--line); }
-.down span { position: absolute; left: 0; width: 1px; height: 22px; background: linear-gradient(var(--wood), var(--fire), var(--earth), var(--metal), var(--water)); animation: down 2.6s ease-in-out infinite; }
+.down span { position: absolute; left: 0; width: 1px; height: 22px; background: linear-gradient(var(--cs-fire), var(--cs-ja), var(--cs-water)); animation: down 2.6s ease-in-out infinite; }
 @keyframes down { from { top: -22px; } to { top: 56px; } }
 @media (prefers-reduced-motion: reduce) { .down span { animation: none; top: 17px; } }
 
@@ -87,7 +91,7 @@ main section { padding-block: 96px; border-top: 1px solid var(--line); }
 .idx { display: grid; grid-template-columns: 180px 1fr; gap: 48px; }
 .idx > .label { display: grid; gap: 6px; align-content: start; position: sticky; top: 32px; align-self: start; }
 .label .no { font-family: var(--display); font-size: 64px; line-height: .9; color: var(--ink); }
-.label .no i { display: block; width: 28px; height: 2px; margin-top: 14px; border-radius: 1px; }
+.label .no i { display: block; width: 28px; height: 2px; margin-top: 14px; border-radius: 1px; background: var(--flow); }
 @media (max-width: 820px) { .idx { grid-template-columns: 1fr; gap: 24px; } .idx > .label { position: static; grid-auto-flow: column; justify-content: start; align-items: baseline; gap: 14px; } .label .no { font-size: 44px; } .label .no i { display: none; } }
 .lede { font-size: clamp(18px, 1.9vw, 21px); color: var(--ink); max-width: 52ch; margin-bottom: 28px; }
 .head { display: grid; gap: 10px; margin-bottom: 40px; max-width: 72ch; }
@@ -109,6 +113,10 @@ main section { padding-block: 96px; border-top: 1px solid var(--line); }
 .terms dt small { display: block; font-family: var(--body); font-size: 12.5px; color: var(--soft); margin-top: 6px; line-height: 1.5; }
 .terms dd { color: var(--body-ink); }
 @media (max-width: 820px) { .terms { grid-template-columns: 1fr; } .terms dt { border-bottom: 0; padding-bottom: 4px; } .terms dd { padding-top: 0; } }
+.refs-h { margin-top: 48px; font-size: 22px; }
+.refs { list-style: none; margin: 14px 0 0; padding: 0; display: grid; gap: 8px; max-width: 78ch; }
+.refs li { color: var(--soft); font-size: 14px; line-height: 1.55; padding-left: 1.2em; text-indent: -1.2em; }
+.refs a { color: var(--ink); white-space: nowrap; }
 .subq { margin: 28px 0 0; padding-left: 1.2em; display: grid; gap: 12px; max-width: 70ch; color: var(--body-ink); }
 .subq b { font-weight: 500; color: var(--ink); }
 .how-h { margin-top: 56px; }
@@ -129,12 +137,12 @@ main section { padding-block: 96px; border-top: 1px solid var(--line); }
 /* projects: the making cycles */
 .cycles { display: grid; gap: 20px; }
 .cycle { display: grid; grid-template-columns: 1.1fr 1fr; border: 1px solid var(--line); border-radius: 16px; background: var(--sheet); overflow: hidden; text-decoration: none; transition: border-color .2s; }
-a.cycle:hover { border-color: var(--soft); }
+a.cycle:hover { border-color: var(--cs-ja); }
 .cycle .pic { min-height: 260px; background: #0b0f14 center / cover no-repeat; position: relative; }
 .cycle .txt { padding: 30px 32px; display: grid; gap: 10px; align-content: center; }
 .cycle .meta { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; font-size: 12px; letter-spacing: .1em; text-transform: uppercase; color: var(--soft); }
 .cycle .state { border: 1px solid var(--line); border-radius: 999px; padding: 2px 10px; letter-spacing: .06em; }
-.cycle .state.live { color: var(--earth); border-color: rgba(240,194,74,.45); }
+.cycle .state.live { color: var(--ink); border-color: var(--cs-ja); }
 .cycle h3 { font-size: 34px; }
 .cycle h3 small { font-family: var(--cjk, var(--display)); font-size: 20px; color: var(--soft); font-weight: 400; margin-left: 8px; }
 .cycle p { color: var(--body-ink); }
@@ -149,7 +157,7 @@ a.cycle:hover { border-color: var(--soft); }
 .cards { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
 @media (max-width: 900px) { .cards { grid-template-columns: 1fr; } }
 .card { display: grid; gap: 8px; align-content: start; padding: 22px; border: 1px solid var(--line); border-radius: 14px; background: var(--sheet); text-decoration: none; transition: border-color .2s, transform .2s; }
-.card:hover { border-color: var(--soft); transform: translateY(-2px); }
+.card:hover { border-color: var(--cs-ja); transform: translateY(-2px); }
 .card .k { font-size: 11.5px; letter-spacing: .12em; text-transform: uppercase; color: var(--soft); }
 .card b { font-family: var(--display); font-weight: 500; font-size: 25px; line-height: 1.15; }
 .card span:last-child { color: var(--body-ink); font-size: 14.5px; }
@@ -183,7 +191,7 @@ footer .wrap { display: grid; gap: 10px; }
 
 <header class="bar gutter">
   <div class="wrap">
-    <a class="mark" href="./"><img src="/oryun-mark.svg" alt=""><span>Circulatory Sensing</span></a>
+    <a class="mark" href="./"><img class="mk-night" src="/brand/circulatory-sensing-icon-night.svg" alt=""><img class="mk-paper" src="/brand/circulatory-sensing-icon-paper.svg" alt=""><span>Circulatory Sensing</span></a>
     <div class="right">
     <nav aria-label="Main">
       <a href="#research">About</a>
@@ -202,7 +210,7 @@ footer .wrap { display: grid; gap: 10px; }
   <canvas id="field" aria-hidden="true"></canvas>
   <div class="wrap">
     <h1 class="vh">Circulatory Sensing</h1>
-    <div class="stripe" aria-hidden="true"><i style="background:var(--wood)"></i><i style="background:var(--fire)"></i><i style="background:var(--earth)"></i><i style="background:var(--metal)"></i><i style="background:var(--water)"></i></div>
+    <div class="stripe" aria-hidden="true"></div>
     <p class="sub">Eastern systems of care as cosmotechnics in participatory, embodied interaction</p>
     <div class="eyebrow">Oryun Lab · Ho Chi Minh City · practice-based research</div>
   </div>
@@ -212,17 +220,17 @@ footer .wrap { display: grid; gap: 10px; }
 <main>
   <section id="research" class="gutter">
     <div class="wrap idx">
-      <div class="label"><span class="no">01<i style="background:var(--wood)"></i></span><span class="eyebrow">Circulatory Sensing</span></div>
+      <div class="label"><span class="no">01<i></i></span><span class="eyebrow">Circulatory Sensing</span></div>
       <div>
-      <p class="lede">Small sensing devices, made from the tools of East Asian body care, that people hold and sense through together. The body is read through the skin, as Eastern medicine reads it, and answered in colour.</p>
+      <p class="lede">Small sensing devices, made from the tools of East Asian body care, that people hold and sense through together. They read the body through touch, breath and rhythm, as Eastern medicine does, and answer in light, sound and vibration that pass from one person to the next.</p>
       <h2>Not just you, but us</h2>
       <div class="prose">
         <p><i>Circulatory</i> means flowing, and coming back around. In Eastern medicine, health is circulation: qi and blood moving through the body, the Five Elements turning into one another, the body in continuous exchange with its surroundings. When the flow stalls, care is what sets it moving again.</p>
-        <p>Circulatory Sensing builds on that. Here, sensing is not about you alone but about us. What one hand feels flows on to the next person and circles back around the group, so each person's state is met by someone else. The devices read the body as it is now, not as a fixed type, and answer at once in colour. In that circle the work looks for a kind of healing that happens between people: being noticed, and noticing back.</p>
+        <p>Circulatory Sensing builds on that. Here, sensing is not about you alone but about us. What one hand feels flows on to the next person and circles back around the group, so each person's state is met by someone else. The devices read the body as it is now, not as a fixed type, and answer at once: in light, in sound, in a buzz in the hand. In that circle the work looks for a kind of healing that happens between people: being noticed, and noticing back.</p>
       </div>
       <h3 class="scales-h">What the circulation awakens</h3>
       <ol class="scales">
-        <li><span class="k">The body</span><p>Attention to your own body: the pressure of your hold, your breath, your warmth, read through the skin the way Eastern medicine reads it.</p></li>
+        <li><span class="k">The body</span><p>Attention to your own body: the pressure of your hold, your breath, your rhythm, felt the way an Eastern practitioner feels the pulse: as a flow, not a number.</p></li>
         <li><span class="k">Each other</span><p>Care and empathy. No device completes the effect alone, so people notice how the others are and adjust to them, without being told to.</p></li>
         <li><span class="k">The surroundings</span><p>Body and surroundings in correspondence. The light moves out into the room and the people in it, so sensing becomes a shared space rather than a private reading.</p></li>
       </ol>
@@ -233,24 +241,36 @@ footer .wrap { display: grid; gap: 10px; }
         <dd>The body-care knowledge of East and Southeast Asia: cupping, hand acupuncture, pulse and colour reading, and the Five Elements as a way of relating the body to its seasons, organs and surroundings. These are systems, not remedies. Each has its own way of reading the body and of responding to it, and they live in everyday practice: cupping is still done at home and in neighbourhood clinics across Ho Chi Minh City. Care here also follows Joan Tronto and María Puig de la Bellacasa: care as the ongoing maintenance of relations, and responsiveness to how others are.</dd>
         <dt>Cosmotechnics<small>Yuk Hui</small></dt>
         <dd>The philosopher Yuk Hui argues that technology is not one universal thing. Every culture's technics carry its own cosmology; he defines cosmotechnics as the unification of the cosmic and moral order through technical activities (<i>The Question Concerning Technology in China</i>, 2016). This research treats Eastern medicine as such a technics: the Five Elements are a working technical system, with their own logic of diagnosis and response, not a metaphor or a decorative theme.</dd>
-        <dt>Skin-land<small>body and land in correspondence</small></dt>
-        <dd>Across East Asian traditions, body and environment are understood to be in continuous correspondence, and the skin is the surface through which they exchange. The historian Shigehisa Kuriyama (<i>The Expressiveness of the Body</i>, 1999) describes how Chinese medicine read the body through its surface: pulse, colour and complexion as the visible record of what happens inside. This research calls the relation <i>skin-land</i>, and treats wellbeing as the quality of the exchange.</dd>
+        <dt>Qi, blood and the channels<small>khí huyết · kinh lạc · 氣血 · 經絡</small></dt>
+        <dd>What circulates. In Eastern medicine, qi and blood move through a network of channels, the meridians, that run beneath the skin and link the inside of the body to its surface, and the body to its surroundings. Health is that movement; illness is where it stalls. Diagnosis follows the flow through four examinations (四診): looking, listening, asking and touching (<i>Nan Jing</i>, difficulty 61), with the pulse read under the fingers as the flow itself. Circulatory Sensing works at this level, with pressure, breath and rhythm, more than with the surface.</dd>
+        <dt>Skin-land<small>the threshold</small></dt>
+        <dd>Across East Asian traditions, body and environment are understood to be in continuous correspondence. The skin is the threshold where circulation crosses between them, and where it becomes visible and touchable: a cupping mark is circulation showing at the surface. The historian Shigehisa Kuriyama (<i>The Expressiveness of the Body</i>, 1999) describes how Chinese medicine read the body through what the surface gives away, the pulse under the fingers and the colour of the complexion. This research calls the relation <i>skin-land</i>: not the object of sensing, but the place where people, devices and surroundings meet.</dd>
         <dt>The Five Elements<small>ngũ hành · 五行</small></dt>
-        <dd>Wood, Fire, Earth, Metal and Water: five phases that generate one another in one cycle (tương sinh · 相生) and restrain one another in another (tương khắc · 相克). In this work they are the grammar for colour, sequence and response: thumb to little finger, wood to water. They are used as a cultural coordinate system, not as medical advice.</dd>
+        <dd>Wood, Fire, Earth, Metal and Water: five phases that generate one another in one cycle (tương sinh · 相生) and restrain one another in another (tương khắc · 相克). In this work they are the grammar for sequence and response, and for the light, sound and colour that answer: thumb to little finger, wood to water. They are used as a cultural coordinate system, not as medical advice.</dd>
         <dt>Participatory, embodied interaction</dt>
         <dd>People take part with their bodies: holding, pressing, breathing, rolling. Nobody is told what the devices mean or what to do. Whatever happens, happens between the participants, and that is what the research observes.</dd>
       </dl>
+      <h3 class="refs-h">Sources</h3>
+      <ul class="refs">
+        <li>Hui, Yuk. 2016. <i>The Question Concerning Technology in China: An Essay in Cosmotechnics.</i> Falmouth: Urbanomic. <a href="https://www.urbanomic.com/book/question-concerning-technology-china/">Publisher</a></li>
+        <li>Hui, Yuk. 2017. "Cosmotechnics as Cosmopolitics." <i>e-flux journal</i> 86. <a href="https://www.e-flux.com/journal/86/161887/cosmo-technics-as-cosmopolitics/">Free to read</a></li>
+        <li>Kuriyama, Shigehisa. 1999. <i>The Expressiveness of the Body and the Divergence of Greek and Chinese Medicine.</i> New York: Zone Books. <a href="https://www.zonebooks.org/books/47-the-expressiveness-of-the-body-and-the-divergence-of-greek-and-chinese-medicine">Publisher</a></li>
+        <li><i>Huangdi Neijing Lingshu</i> 黃帝內經 · 靈樞, on the channels and the flow of qi and blood. <a href="https://ctext.org/huangdi-neijing/ling-shu-jing">Chinese Text Project</a></li>
+        <li><i>Nan Jing</i> 難經, difficulty 61, on the four examinations. <a href="https://ctext.org/nan-jing/shen-sheng-gong-qiao/ens">Chinese Text Project</a></li>
+        <li>Tronto, Joan C. 1993. <i>Moral Boundaries: A Political Argument for an Ethic of Care.</i> New York: Routledge. <a href="https://www.routledge.com/Moral-Boundaries-A-Political-Argument-for-an-Ethic-of-Care/Tronto/p/book/9780415906425">Publisher</a></li>
+        <li>Puig de la Bellacasa, María. 2017. <i>Matters of Care: Speculative Ethics in More Than Human Worlds.</i> Minneapolis: University of Minnesota Press.</li>
+      </ul>
       </div>
     </div>
   </section>
 
   <section id="question" class="gutter">
     <div class="wrap idx">
-      <div class="label"><span class="no">02<i style="background:var(--fire)"></i></span><span class="eyebrow">The research</span></div>
+      <div class="label"><span class="no">02<i></i></span><span class="eyebrow">The research</span></div>
       <div>
       <p class="question">How can Eastern cosmological models of relation and care generate, and be enacted through, cultural interaction models?</p>
       <ol class="subq">
-        <li><b>Design grammar.</b> Which principles, drawn from skin-land and Eastern diagnostic logic, produce touch-based sensing systems that bring people into relation without instruction?</li>
+        <li><b>Design grammar.</b> Which principles, drawn from Eastern diagnostic logic and the circulation it reads, produce touch-based sensing systems that bring people into relation without instruction?</li>
         <li><b>Care and responsiveness.</b> How do such devices invite care between the people who meet through them, including strangers?</li>
         <li><b>Does the cosmology matter?</b> Do the devices work differently with Five Elements logic than with an arbitrary colour mapping on the same hardware, and do they still invite care in public space without a facilitator?</li>
       </ol>
@@ -258,7 +278,7 @@ footer .wrap { display: grid; gap: 10px; }
         <div>
           <span class="n">01 · ALIGNMENT</span>
           <h3>The diagnosis is the grammar</h3>
-          <p>Pressure and hold map to Five Elements states, and colour follows the generating cycle. Diagnosis and response happen together, as in Eastern medical practice.</p>
+          <p>Pressure, hold and breath map to Five Elements states, and the response follows the generating cycle. Reading and response happen together, as under a practitioner's fingers.</p>
         </div>
         <div>
           <span class="n">02 · RELATION</span>
@@ -282,7 +302,7 @@ footer .wrap { display: grid; gap: 10px; }
 
   <section id="projects" class="gutter">
     <div class="wrap idx">
-      <div class="label"><span class="no">03<i style="background:var(--earth)"></i></span><span class="eyebrow">Projects</span></div>
+      <div class="label"><span class="no">03<i></i></span><span class="eyebrow">Projects</span></div>
       <div>
       <div class="head">
         <h2>Holding, then breathing</h2>
@@ -318,7 +338,7 @@ footer .wrap { display: grid; gap: 10px; }
 
   <section id="studies" class="gutter">
     <div class="wrap idx">
-      <div class="label"><span class="no">04<i style="background:var(--metal)"></i></span><span class="eyebrow">Studies</span></div>
+      <div class="label"><span class="no">04<i></i></span><span class="eyebrow">Studies</span></div>
       <div>
       <div class="head">
         <h2>Browser works that each test one part of the grammar</h2>
@@ -336,7 +356,7 @@ footer .wrap { display: grid; gap: 10px; }
 
   <section id="lab" class="gutter">
     <div class="wrap idx">
-      <div class="label"><span class="no">05<i style="background:var(--water)"></i></span><span class="eyebrow">Oryun Lab</span></div>
+      <div class="label"><span class="no">05<i></i></span><span class="eyebrow">Oryun Lab</span></div>
       <div class="lab">
       <div class="body">
         <h2>Where the work is made</h2>
@@ -352,7 +372,7 @@ footer .wrap { display: grid; gap: 10px; }
 
   <section id="outputs" class="gutter">
     <div class="wrap idx">
-      <div class="label"><span class="no">06<i style="background:var(--wood)"></i></span><span class="eyebrow">Outputs</span></div>
+      <div class="label"><span class="no">06<i></i></span><span class="eyebrow">Outputs</span></div>
       <div>
       <div class="head">
         <h2>Selected papers and exhibitions</h2>
@@ -381,11 +401,11 @@ footer .wrap { display: grid; gap: 10px; }
   document.querySelector('.theme').addEventListener('click', () => {
     const t = document.documentElement.dataset.theme === 'light' ? 'dark' : 'light';
     document.documentElement.dataset.theme = t;
-    document.querySelector('meta[name="theme-color"]').content = t === 'light' ? '#f3efe7' : '#0b0f14';
+    document.querySelector('meta[name="theme-color"]').content = t === 'light' ? '#f3efe7' : '#101418';
     try { localStorage.setItem('cs-theme', t); } catch (e) {}
   });
-  if (document.documentElement.dataset.theme === 'dark') document.querySelector('meta[name="theme-color"]').content = '#0b0f14';
+  if (document.documentElement.dataset.theme === 'light') document.querySelector('meta[name="theme-color"]').content = '#f3efe7';
 </script>
-<script type="module" src="/src/cycle.js"></script>
+<script type="module" src="/src/orbit.js"></script>
 </body>
 </html>
