@@ -26,43 +26,43 @@ A five-petal knot drawn as one unbroken line, inside a tilted orbit.
 | Level | Colour | Ring | Used on |
 |---|---|---|---|
 | **Oryun Lab** (studio) | Twilight in 간색 | Depth ring, ink (white on night) | studio pages, stationery, avatars |
-| **Circulatory Sensing** (research programme) | Where Fire meets Water: knot in ink, colour only in the ring | 적 → 자 → 흑 and back | research outputs, talks, papers, this website |
-| **Circulation** (first project) | 오방 정색 | Water ring, blue | installation, workshop, toolkit, poster, project pages |
+| **Circulatory Sensing** (research programme) | Where Fire meets Water: knot in ink, colour only in the ring | red 적 → purple 자 → blue 흑 and back | research outputs, talks, papers, this website |
+| **Circulation** (first project) | Five source colours (오방 정색) | Water ring, blue | installation, workshop, toolkit, poster, project pages |
 
 ## Colours
 
 Night is the primary ground (#0a0d11 to #101418). Paper versions keep the same hue, stay vivid and are darkened only until they hold 3:1 on paper (#fbf9f4). Never mix them toward grey or ink: they go muddy.
 
-**Oryun Lab: 간색**, the in-between colours of Korean colour tradition, each holding its own element's 정색.
+**Oryun Lab: in-between colours (간색)** of Korean colour tradition, each holding its own element's 정색.
 
-| 간색 | Mix | Element | Night | Paper |
+| Element | 간색 | Mix | Night | Paper |
 |---|---|---|---|---|
-| 녹 | 청 + 황 | Wood | `#6fe3a8` | `#12a65b` |
-| 홍 | 적 + 백 | Fire | `#ff7ac8` | `#ff3daf` |
-| 유황 | 황 + 흑 | Earth | `#d9d23c` | `#999311` |
-| 벽 | 청 + 백 | Metal | `#8fd8ff` | `#0096e6` |
-| 자 | 적 + 흑 | Water | `#ad55ff` | `#ad55ff` |
+| Wood | 녹 | 청 + 황 | `#6fe3a8` | `#12a65b` |
+| Fire | 홍 | 적 + 백 | `#ff7ac8` | `#ff3daf` |
+| Earth | 유황 | 황 + 흑 | `#d9d23c` | `#999311` |
+| Metal | 벽 | 청 + 백 | `#8fd8ff` | `#0096e6` |
+| Water | 자 | 적 + 흑 | `#ad55ff` | `#ad55ff` |
 
 **Circulatory Sensing: Fire meets Water.** In Eastern thought fire rises and water sinks; their meeting is balance (I Ching 既濟, 63: water above fire). 자, the mix of 적 and 흑, appears only where they meet.
 
 | | Night | Paper |
 |---|---|---|
-| 적 Fire | `#ff2d55` | `#db2b4e` |
-| 자 Fire + Water | `#ad55ff` | `#6d2db5` |
-| 흑 Water | `#2979ff` | `#276bdc` |
+| Fire 적 | `#ff2d55` | `#db2b4e` |
+| Fire + Water 자 | `#ad55ff` | `#6d2db5` |
+| Water 흑 | `#2979ff` | `#276bdc` |
 | Knot | `#e9ecea` | `#1c2227` |
 
-**Circulation: 오방 정색**, the five source colours.
+**Circulation: the five source colours (오방 정색).**
 
-| 정색 | Element | Night | Paper (logo) |
+| Element | 정색 | Night | Paper (logo) |
 |---|---|---|---|
-| 청 | Wood | `#3ddc84` | `#12a654` |
-| 적 | Fire | `#ff4d3d` | `#ff4d3d` |
-| 황 | Earth | `#ffc531` | `#bb8600` |
-| 백 | Metal | `#f4f0e6` | `#cfc6b4` |
-| 흑 | Water | `#5b86ff` | `#5b86ff` |
+| Wood | 청 | `#3ddc84` | `#12a654` |
+| Fire | 적 | `#ff4d3d` | `#ff4d3d` |
+| Earth | 황 | `#ffc531` | `#bb8600` |
+| Metal | 백 | `#f4f0e6` | `#cfc6b4` |
+| Water | 흑 | `#5b86ff` | `#5b86ff` |
 
-The installation and the poster keep the original project palette (청 `#2f8a4f`, 적 `#c8372d`, 황 `#e2a823`, 백 `#f4f0e6` / `#d6cdbb`, 흑 `#1b2840`).
+The installation and the poster keep the original project palette (Wood 청 `#2f8a4f`, Fire 적 `#c8372d`, Earth 황 `#e2a823`, Metal 백 `#f4f0e6` / `#d6cdbb`, Water 흑 `#1b2840`).
 
 ## Files
 
