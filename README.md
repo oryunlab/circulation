@@ -2,18 +2,18 @@
 
 **Cupping, Colour, and Collective Sensing.** Three handheld cupping-form devices
 read the body through grip pressure and pulse, and glow the colour of its present
-state in the Five Elements (五行). As three participants synchronise, pulses
+state in the Five Elements (오행). As three participants synchronise, pulses
 converging and grips aligning, the colours harmonise and, where the venue allows,
 the room blooms with a collective colour field. The cups are the seed; the room
 is the bloom.
 
-Cupping (giác hơi / 拔罐) is a shared Asia Pacific care practice. The hold
-itself is the diagnostic gesture, after the O-ring test: how firmly,
+Cupping (부항 / giác hơi / 拔罐) is a shared Asia Pacific care practice. The hold
+itself is the diagnostic gesture, after the O-ring test (오링 테스트): how firmly,
 steadily, and long a hand grips. This is a design source and cultural coordinate
 system, **not medical advice**; it reads present state, not fixed constitution.
 
-SCD Seed Funding 2026, funded build June to November 2026. Part of Øryn.
-Grounded in the artist's practice of hand acupuncture.
+SCD Seed Funding 2026, funded build June to November 2026. Part of Øryn (륜).
+Grounded in the artist's practice of Korean hand acupuncture (수지침).
 
 ## What is here now
 
@@ -60,8 +60,8 @@ is set to the repo name.
 
 | Element | Colour | Organ | State |
 | --- | --- | --- | --- |
-| Wood (木) | green | Liver / Gallbladder | growth |
-| Fire (火) | red | Heart / Small Intestine | activation |
-| Earth (土) | yellow | Spleen / Stomach | grounding |
-| Metal (金) | white | Lung / Large Intestine | release |
-| Water (水) | deep blue | Kidney / Bladder | stillness |
+| Wood (목) | green | Liver / Gallbladder | growth |
+| Fire (화) | red | Heart / Small Intestine | activation |
+| Earth (토) | yellow | Spleen / Stomach | grounding |
+| Metal (금) | white | Lung / Large Intestine | release |
+| Water (수) | deep blue | Kidney / Bladder | stillness |

@@ -101,32 +101,32 @@
         </g>
         <g font-family="ui-monospace, Menlo, monospace" text-anchor="middle">
           <circle cx="160" cy="52" r="27" fill="rgb(95,174,106)"/>
-          <text x="160" y="59" font-size="18" fill="#14120f">木</text>
+          <text x="160" y="59" font-size="18" fill="#14120f">목</text>
           <text x="160" y="20" font-size="11" fill="rgba(242,239,233,0.75)">wood</text>
           <circle cx="263" cy="127" r="27" fill="rgb(229,84,75)"/>
-          <text x="263" y="134" font-size="18" fill="#14120f">火</text>
+          <text x="263" y="134" font-size="18" fill="#14120f">화</text>
           <text x="300" y="112" font-size="11" fill="rgba(242,239,233,0.75)">fire</text>
           <circle cx="224" cy="248" r="27" fill="rgb(224,178,60)"/>
-          <text x="224" y="255" font-size="18" fill="#14120f">土</text>
+          <text x="224" y="255" font-size="18" fill="#14120f">토</text>
           <text x="273" y="285" font-size="11" fill="rgba(242,239,233,0.75)">earth</text>
           <circle cx="96" cy="248" r="27" fill="rgb(238,241,244)"/>
-          <text x="96" y="255" font-size="18" fill="#14120f">金</text>
+          <text x="96" y="255" font-size="18" fill="#14120f">금</text>
           <text x="47" y="285" font-size="11" fill="rgba(242,239,233,0.75)">metal</text>
           <circle cx="57" cy="127" r="27" fill="rgb(47,93,138)"/>
-          <text x="57" y="134" font-size="18" fill="#f2efe9">水</text>
+          <text x="57" y="134" font-size="18" fill="#f2efe9">수</text>
           <text x="20" y="112" font-size="11" fill="rgba(242,239,233,0.75)">water</text>
         </g>
       </svg>
     </div>
-    <p class="cycle-caption">相生, the generating cycle: each element feeds the next. When held cups sit adjacent on this circle, light travels between them. It is a fixed contract of the work.</p>
+    <p class="cycle-caption">상생, the generating cycle: each element feeds the next. When held cups sit adjacent on this circle, light travels between them. It is a fixed contract of the work.</p>
 
     <h2>The map</h2>
 
     <div class="layer l-spec">
       <h4>The shared spec: the artwork's logic, one truth in two languages</h4>
       <p class="why">If the browser and the cup ever disagree, the project's core claim breaks. Change the mapping in the TypeScript AND the firmware together, in one pass.</p>
-      <div class="file"><code>src/fiveElements.ts</code><span>the Five Elements (五行) mapping engine: pressure, trend, pulse, regularity, hold become an element and a colour; also the paper's system description</span></div>
-      <div class="file"><code>src/sync.ts</code><span>the collective layer: synchronisation score, room colour, and the generating-cycle (相生) circulation reading (score, flow edges, chain)</span></div>
+      <div class="file"><code>src/fiveElements.ts</code><span>the Five Elements (오행) mapping engine: pressure, trend, pulse, regularity, hold become an element and a colour; also the paper's system description</span></div>
+      <div class="file"><code>src/sync.ts</code><span>the collective layer: synchronisation score, room colour, and the 상생 circulation reading (score, flow edges, chain)</span></div>
       <div class="file"><code>hardware/cup/cup.ino</code><span>the C++ mirror of the engine plus presence and afterglow, running on the cup itself</span></div>
     </div>
 
@@ -152,7 +152,7 @@
 
     <div class="layer l-hub">
       <h4>The collective layer: after three cups exist</h4>
-      <div class="file"><code>hub/hub.ts</code><span>the sync hub: listens to cups (OSC port 8000), computes sync + room colour, republishes to TouchDesigner (port 9000), logs every tick to <code>logs/session-*.jsonl</code>: the paper's dataset and the Oryn archive feed. Run with <code>npm run hub</code></span></div>
+      <div class="file"><code>hub/hub.ts</code><span>the sync hub: listens to cups (OSC port 8000), computes sync + room colour, republishes to TouchDesigner (port 9000), logs every tick to <code>logs/session-*.jsonl</code>: the paper's dataset and the 계 archive feed. Run with <code>npm run hub</code></span></div>
       <div class="file"><code>hub/README.md</code><span>ports and message schema</span></div>
       <div class="file"><code>touchdesigner/RECIPES.md</code><span>the from-zero TouchDesigner path, one concrete artifact per recipe, ending at a festival-ready show patch. Optional by design</span></div>
     </div>

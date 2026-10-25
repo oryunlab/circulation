@@ -1,4 +1,4 @@
-// The Five Elements (五行) mapping engine: the conceptual core of Circulation.
+// The Five Elements (오행) mapping engine: the conceptual core of Circulation.
 //
 // A cup reads a two-signal portrait of the body holding it, grip pressure (from
 // a force sensor) and pulse (from a PPG sensor), and maps that present state to
@@ -20,11 +20,11 @@ export type Element = 'wood' | 'fire' | 'earth' | 'metal' | 'water';
 export const ELEMENTS: Element[] = ['wood', 'fire', 'earth', 'metal', 'water'];
 
 export const ELEMENT_INFO: Record<Element, { hanja: string; ko: string; organ: string; state: string; rgb: [number, number, number] }> = {
-  wood: { hanja: '木', ko: 'mok', organ: 'Liver / Gallbladder', state: 'growth', rgb: [95, 174, 106] },
-  fire: { hanja: '火', ko: 'hwa', organ: 'Heart / Small Intestine', state: 'activation', rgb: [229, 84, 75] },
-  earth: { hanja: '土', ko: 'to', organ: 'Spleen / Stomach', state: 'grounding', rgb: [224, 178, 60] },
-  metal: { hanja: '金', ko: 'geum', organ: 'Lung / Large Intestine', state: 'release', rgb: [238, 241, 244] },
-  water: { hanja: '水', ko: 'su', organ: 'Kidney / Bladder', state: 'stillness', rgb: [47, 93, 138] },
+  wood: { hanja: '목', ko: '목', organ: 'Liver / Gallbladder', state: 'growth', rgb: [95, 174, 106] },
+  fire: { hanja: '화', ko: '화', organ: 'Heart / Small Intestine', state: 'activation', rgb: [229, 84, 75] },
+  earth: { hanja: '토', ko: '토', organ: 'Spleen / Stomach', state: 'grounding', rgb: [224, 178, 60] },
+  metal: { hanja: '금', ko: '금', organ: 'Lung / Large Intestine', state: 'release', rgb: [238, 241, 244] },
+  water: { hanja: '수', ko: '수', organ: 'Kidney / Bladder', state: 'stillness', rgb: [47, 93, 138] },
 };
 
 /** One frame of a cup's two-signal reading, already conditioned by the caller. */

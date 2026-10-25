@@ -60,7 +60,7 @@
       <h2>Circulation made literal</h2>
       <p>Synchronisation is agreement; circulation is passage. The title's mechanic arrives in the simulator in two parts.</p>
       <ul>
-        <li>The <b>generating cycle (相生)</b> now runs as part of the shared spec: Wood feeds Fire, Fire feeds Earth, Earth feeds Metal, Metal feeds Water, Water feeds Wood. When the held cups' elements sit adjacent on the cycle, light visibly travels from cup to cup in the generating direction, so circulation among others is no longer wall text but a thing the light does. <a href="./system.html">Open the system.</a></li>
+        <li>The <b>generating cycle (상생)</b> now runs as part of the shared spec: Wood feeds Fire, Fire feeds Earth, Earth feeds Metal, Metal feeds Water, Water feeds Wood. When the held cups' elements sit adjacent on the cycle, light visibly travels from cup to cup in the generating direction, so circulation among others is no longer wall text but a thing the light does. <a href="./system.html">Open the system.</a></li>
         <li>Releasing a cup now leaves a <b>mark</b>: the colour of the hold lingers and slowly fades, a cupping mark's days compressed to seconds. The room keeps a faint memory of who was just here.</li>
       </ul>
       <p class="muted">The mark is sampled from the steady moments of the hold, not from the release itself, so the flick of letting go (which reads as Metal) does not decide what lingers. Only held cups circulate; marks receive nothing, they only fade.</p>
@@ -71,7 +71,7 @@
       <h2>The collective layer, and a way into TouchDesigner</h2>
       <p>With one cup's logic settled, the layer that makes three cups into one is next, and it is built to keep the cups independent of it.</p>
       <ul>
-        <li>The <b>sync hub</b> listens to the three cups, computes the synchronisation score and the room colour, and republishes to TouchDesigner. Crucially it also <b>logs every tick</b> to a timestamped file: that record is the dataset the paper is written from, and the feed for Oryn's Gye archive.</li>
+        <li>The <b>sync hub</b> listens to the three cups, computes the synchronisation score and the room colour, and republishes to TouchDesigner. Crucially it also <b>logs every tick</b> to a timestamped file: that record is the dataset the paper is written from, and the feed for Oryn's 계 archive.</li>
         <li>A set of <b>TouchDesigner recipes</b> lays out a path from never having opened it to a festival-ready show patch, one concrete result per week. The core turns out to be a single sentence: sensor numbers arrive as a channel and drive the colour of an image.</li>
       </ul>
       <p class="muted">The architecture holds one rule: the cup decides its own colour and glows on its own; TouchDesigner sits above a system that already works, so a dropped connection dims the room but never darkens the cups.</p>
@@ -82,14 +82,14 @@
       <h2>The engine before the hardware</h2>
       <p>Eleven weeks to VFCD. Before any cup exists, the interaction itself is the thing to get right, so this week starts with the logic, not the electronics.</p>
       <ul>
-        <li>The <b>Five Elements (五行) mapping engine</b> is written as a single specification: grip pressure, its trend, pulse rate, pulse regularity, and sustained hold read into one of the five elements and a colour. One spec, so the browser and the cup can never disagree.</li>
+        <li>The <b>Five Elements (오행) mapping engine</b> is written as a single specification: grip pressure, its trend, pulse rate, pulse regularity, and sustained hold read into one of the five elements and a colour. One spec, so the browser and the cup can never disagree.</li>
         <li>A <b>live simulator</b> of three cups now runs that engine, with a synchronisation metric and a room colour that blooms as the three converge. Tuning the mapping needs no hardware. <a href="./system.html">Open the system.</a></li>
         <li>The <b>cup firmware</b> (ESP32, force sensor, pulse sensor, LED ring) is drafted to the same spec, ready for the bench.</li>
       </ul>
       <p class="muted">The one experiment that decides the design: can the pulse sensor read a usable signal from a hand that is actively gripping? That is the first thing to test on the bench. If not, the reading leans on pressure and a brief "hold and be still" phase, which is coherent with the practice anyway.</p>
     </div>
 
-    <footer>A design source and cultural coordinate system, not medical advice. Part of Oryn.</footer>
+    <footer>A design source and cultural coordinate system, not medical advice. Part of Oryn (륜).</footer>
   </div>
 </body>
 </html>

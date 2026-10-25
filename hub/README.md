@@ -39,5 +39,5 @@ Point TouchDesigner's OSC In CHOP at port 9000 (see `touchdesigner/RECIPES.md`).
 Each run writes `logs/session-<timestamp>.jsonl`, one JSON object per tick:
 timestamp, each cup's pressure / bpm / confidence / element, the sync score,
 element agreement, and the room colour. This is the interaction dataset the paper
-is written from, and the feed for Oryn's Gye archive. Keep every session
+is written from, and the feed for Oryn's 계 (Gye) archive. Keep every session
 file, from bench tests to the structured triad sessions.

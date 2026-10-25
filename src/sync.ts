@@ -50,7 +50,7 @@ export function roomColour(cupRgb: Array<[number, number, number]>, sync: number
   ];
 }
 
-// --- Circulation along the generating cycle (相生) ---
+// --- Circulation along the generating cycle (상생) ---
 //
 // Synchronisation is agreement; circulation is passage. The generating cycle,
 // wood feeds fire feeds earth feeds metal feeds water feeds wood, gives the
@@ -62,7 +62,7 @@ export function roomColour(cupRgb: Array<[number, number, number]>, sync: number
 /** The generating order: each element feeds the next, water feeds wood. */
 export const GENERATING: Element[] = ['wood', 'fire', 'earth', 'metal', 'water'];
 
-/** True when element a generates (feeds) element b on the 相生 cycle. */
+/** True when element a generates (feeds) element b on the 상생 cycle. */
 export function generates(a: Element, b: Element): boolean {
   return GENERATING[(GENERATING.indexOf(a) + 1) % GENERATING.length] === b;
 }

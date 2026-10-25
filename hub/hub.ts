@@ -7,7 +7,7 @@ import { ELEMENTS, type Element } from '../src/fiveElements';
 // The sync hub. Ingests the three cups over OSC, computes the collective
 // synchronisation score and the room colour, republishes to TouchDesigner (the
 // generative colour fields and the room layer), and logs a timestamped record of
-// every tick. That log is both the paper's dataset and the Oryn Gye feed.
+// every tick. That log is both the paper's dataset and the Oryn 계 (Gye) feed.
 //
 // The cups already glow on their own; this hub only adds the collective layer.
 // Run: npm run hub
@@ -71,7 +71,7 @@ setInterval(() => {
     udp.send({ address: `/circulation/cup/${id}`, args: [c.pressure, c.bpm, c.confidence, c.element, c.rgb[0], c.rgb[1], c.rgb[2]] });
   }
 
-  // log the tick (paper dataset + Oryn Gye feed)
+  // log the tick (paper dataset + Oryn 계 feed)
   log.write(
     JSON.stringify({
       t: new Date().toISOString(),

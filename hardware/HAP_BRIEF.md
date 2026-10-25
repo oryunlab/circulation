@@ -7,7 +7,7 @@ Funded build ends **30 November 2026**.
 (top view, section, exploded light box, socket and mounting details, cup pad band, parts schedule).
 Open it first; this brief refers to it.
 
-**Name.** The round table with the light box at its centre is called the **Hap** (Vietnamese hợp, Chinese 合): the meeting point where flows join, from the classical five transport points (井 well · 滎 spring · 輸 stream · 經 river · 合 Hap). In this brief, "the Hap" means the whole table.
+**Name.** The round table with the light box at its centre is called the **Hap** (Korean 합, Vietnamese hợp, Chinese 合): the meeting point where flows join, from the classical five transport points (井 well · 滎 spring · 輸 stream · 經 river · 合 Hap). In this brief, "the Hap" means the whole table.
 
 This brief **replaces the build direction in `TECHNICIAN_BRIEF.txt` (11 July)**. What changed:
 
