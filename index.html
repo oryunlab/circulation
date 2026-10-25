@@ -92,6 +92,11 @@ h3 { font-size: 27px; line-height: 1.15; font-weight: 500; }
 
 /* sections */
 main section { padding-block: 96px; border-top: 1px solid var(--line); }
+/* teaser: the 28 s film, full width of the column, plays silently when it scrolls into view */
+main section.teaser { padding-block: 72px 88px; }
+.teaser figure { margin: 0; display: grid; gap: 14px; }
+.teaser video { width: 100%; aspect-ratio: 16 / 9; height: auto; display: block; border-radius: 16px; background: #101418; border: 1px solid var(--line); }
+.teaser figcaption { display: flex; justify-content: space-between; gap: 16px; flex-wrap: wrap; font-size: 13.5px; color: var(--soft); }
 .idx { display: grid; grid-template-columns: 180px 1fr; gap: 48px; }
 .idx > .label { display: grid; gap: 6px; align-content: start; position: sticky; top: 32px; align-self: start; }
 .label .no { font-family: var(--display); font-size: 64px; line-height: .9; color: var(--ink); }
@@ -223,6 +228,14 @@ footer .wrap { display: grid; gap: 10px; }
 </div>
 
 <main>
+  <section id="teaser" class="teaser gutter" aria-label="Teaser">
+    <div class="wrap">
+      <figure>
+        <video src="/media/circulatory-sensing-teaser.mp4" poster="/media/circulatory-sensing-teaser-poster.jpg" muted playsinline loop controls preload="none" aria-label="Circulatory Sensing teaser, 28 seconds, silent"></video>
+        <figcaption><span>Circulatory Sensing · teaser, 28 s, silent</span><span>In East Asia, care begins with touch.</span></figcaption>
+      </figure>
+    </div>
+  </section>
   <section id="research" class="gutter">
     <div class="wrap idx">
       <div class="label"><span class="no">01<i></i></span><span class="eyebrow">Circulatory Sensing</span></div>
@@ -412,5 +425,13 @@ footer .wrap { display: grid; gap: 10px; }
   if (document.documentElement.dataset.theme === 'light') document.querySelector('meta[name="theme-color"]').content = '#f3efe7';
 </script>
 <script type="module" src="/src/currents.js"></script>
+<script>
+  // the teaser plays, silently, only while it is on screen (never for visitors who ask for reduced motion)
+  (() => {
+    const v = document.querySelector('#teaser video');
+    if (!v || matchMedia('(prefers-reduced-motion: reduce)').matches || !('IntersectionObserver' in window)) return;
+    new IntersectionObserver(([e]) => { if (e.isIntersecting) v.play().catch(() => {}); else v.pause(); }, { threshold: .5 }).observe(v);
+  })();
+</script>
 </body>
 </html>
