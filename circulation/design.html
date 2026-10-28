@@ -181,9 +181,9 @@ tr:last-child td { border-bottom: 0; }
 
   <section id="water">
     <div class="sec-head">
-      <h2>The centre: Sea and Peak, with a bowl of water</h2>
-      <p>The centre of the Hap is changing from the field of acrylic rods (drawn further down) to Sea and Peak, after the sea-water and cliff pattern (海水江崖紋) at the hem of East Asian court robes, where streams run into rolling waves and a rock rises from the sea. Here the three vessels are the rivers (江), two low wave rings around the centre are the sea (海), and a stone at the centre is the peak (崖). On the peak sits a bowl of water, jeonghwasu (정화수): the first water drawn from the well at dawn and set out for the people one cares for. This is 合, where the three meet.</p>
-      <p>Each cup has five finger pads, and how a person presses mixes the five element colours into their own colour. When the three hands press in unalike ways, the light on the waves is choppy, each colour on its own side. As the hands come into tune, the sea calms, the colours blend, and the light rises to the bowl: ripples cross the water, and the water throws moving patterns onto the ceiling. Participants hold the cups and never touch the water.</p>
+      <h2>The centre: jeonghwasu, a bowl of water</h2>
+      <p>The centre of the Hap is changing from the field of acrylic rods (drawn further down) to a bowl of water: jeonghwasu (정화수, 井華水), clear well water drawn at dawn and set out in a bowl for the people one cares for. The 井 in its name is the same "well" as the fingertip well point where Circulation begins. The three vessels carry each person's light to the bowl. This is 合, where the three meet.</p>
+      <p>Each cup has five finger pads, and how a person presses mixes the five element colours into their own colour. When the three hands press in unalike ways, ripples start on each person's side of the bowl and cross one another. As the hands come into tune, the ripples meet and become one slow ripple from the centre, the water fills with one shared colour, and moving water patterns appear on the ceiling. Participants hold the cups and never touch the water.</p>
     </div>
     <div class="presets" role="group" aria-label="Moment shown in the sketches">
       <button data-dir="auto" aria-pressed="true">Play demo</button>
@@ -194,8 +194,8 @@ tr:last-child td { border-bottom: 0; }
       <button data-dir="release" aria-pressed="false">Letting go</button>
     </div>
     <div class="duo">
-      <div class="dir"><div class="stage"><span class="tag">SEA AND PEAK · FROM THE SIDE</span><canvas id="a-side" aria-label="Side view: two low wave rings around a stone with a bowl of water, and water patterns on the ceiling"></canvas></div></div>
-      <div class="dir"><div class="stage"><span class="tag">SEA AND PEAK · FROM ABOVE</span><canvas id="a-top" aria-label="Top view of the centre: vessels ending at two wave rings around the bowl of water"></canvas></div></div>
+      <div class="dir"><div class="stage"><span class="tag">JEONGHWASU · FROM THE SIDE</span><canvas id="a-side" aria-label="Side view: a bowl of water on a low stone at the centre, and water patterns on the ceiling"></canvas></div></div>
+      <div class="dir"><div class="stage"><span class="tag">JEONGHWASU · FROM ABOVE</span><canvas id="a-top" aria-label="Top view of the centre: three vessels ending at the bowl of water"></canvas></div></div>
     </div>
     <p class="hint" id="dir-state" aria-live="polite">Nobody: the centre breathes faintly at 6 breaths per minute.</p>
     <p class="hint">In development, October 2026. The live view and the drawings below show the earlier rod centre.</p>
@@ -1020,7 +1020,7 @@ tr:last-child td { border-bottom: 0; }
 </script>
 
 <script>
-// The centre: Sea and Peak with a bowl of water (side and top views).
+// The centre: jeonghwasu, a bowl of water (side and top views).
 (() => {
   const P = [
     { a: -Math.PI / 2, rgb: [95, 174, 106] },   // A, Wood (back)
@@ -1052,7 +1052,7 @@ tr:last-child td { border-bottom: 0; }
     return ctx;
   }
   const atctx = setup('a-top'), asctx = setup('a-side');
-  const drawAll = () => { centreTop(atctx, true); centreSide(asctx, true); };
+  const drawAll = () => { centreTop(atctx, false); centreSide(asctx, false); };
 
   const cur = { p: [0, 0, 0], g: 0, bloom: 0 };
   let mode = 'auto', target = 'rest', since = 0, last = 0, t = 0;
