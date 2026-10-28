@@ -110,6 +110,11 @@ tr:last-child td { border-bottom: 0; }
 .flags li { display: grid; grid-template-columns: 90px 1fr; gap: 12px; padding: 12px 14px; border: 1px solid var(--line); border-radius: 4px; background: var(--sheet); }
 .flags .k { font-family: var(--mono); font-size: 11px; letter-spacing: .06em; text-transform: uppercase; color: var(--accent); padding-top: 2px; }
 @media (max-width: 480px) { .flags li { grid-template-columns: 1fr; gap: 4px; } }
+
+/* water centre */
+.duo { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px; }
+@media (max-width: 760px) { .duo { grid-template-columns: 1fr; } }
+.dir { display: grid; gap: 10px; align-content: start; }
 </style>
 <link rel="icon" href="/brand/circulation-app-icon.svg" type="image/svg+xml">
 <link rel="apple-touch-icon" href="/brand/circulation-apple-touch-icon-180.png">
@@ -174,6 +179,28 @@ tr:last-child td { border-bottom: 0; }
     </div>
   </section>
 
+  <section id="water">
+    <div class="sec-head">
+      <h2>The centre: Sea and Peak, with a bowl of water</h2>
+      <p>The centre of the Hap is changing from the field of acrylic rods (drawn further down) to Sea and Peak, after the sea-water and cliff pattern (海水江崖紋) at the hem of East Asian court robes, where streams run into rolling waves and a rock rises from the sea. Here the three vessels are the rivers (江), two low wave rings around the centre are the sea (海), and a stone at the centre is the peak (崖). On the peak sits a bowl of water, jeonghwasu (정화수): the first water drawn from the well at dawn and set out for the people one cares for. This is 合, where the three meet.</p>
+      <p>Each cup has five finger pads, and how a person presses mixes the five element colours into their own colour. When the three hands press in unalike ways, the light on the waves is choppy, each colour on its own side. As the hands come into tune, the sea calms, the colours blend, and the light rises to the bowl: ripples cross the water, and the water throws moving patterns onto the ceiling. Participants hold the cups and never touch the water.</p>
+    </div>
+    <div class="presets" role="group" aria-label="Moment shown in the sketches">
+      <button data-dir="auto" aria-pressed="true">Play demo</button>
+      <button data-dir="rest" aria-pressed="false">Nobody</button>
+      <button data-dir="one" aria-pressed="false">Hands differ</button>
+      <button data-dir="two" aria-pressed="false">Getting closer</button>
+      <button data-dir="three" aria-pressed="false">In tune</button>
+      <button data-dir="release" aria-pressed="false">Letting go</button>
+    </div>
+    <div class="duo">
+      <div class="dir"><div class="stage"><span class="tag">SEA AND PEAK · FROM THE SIDE</span><canvas id="a-side" aria-label="Side view: two low wave rings around a stone with a bowl of water, and water patterns on the ceiling"></canvas></div></div>
+      <div class="dir"><div class="stage"><span class="tag">SEA AND PEAK · FROM ABOVE</span><canvas id="a-top" aria-label="Top view of the centre: vessels ending at two wave rings around the bowl of water"></canvas></div></div>
+    </div>
+    <p class="hint" id="dir-state" aria-live="polite">Nobody: the centre breathes faintly at 6 breaths per minute.</p>
+    <p class="hint">In development, October 2026. The live view and the drawings below show the earlier rod centre.</p>
+  </section>
+
   <section>
     <div class="sec-head">
       <h2>Sensing together</h2>
@@ -227,7 +254,7 @@ tr:last-child td { border-bottom: 0; }
 
   <section>
     <div class="sec-head">
-      <h2>Centre piece, exploded</h2>
+      <h2>Earlier centre: the rod field, exploded</h2>
       <p>The light box is a 26 cm drum set into the table, with the lid flush to the tabletop. It has five layers, top to bottom. The rods drop into sockets in the lid, pass through a black baffle, and stop just above their own pixel. The rod colours show a moment of medium agreement: three strands orbiting on the middle ring.</p>
     </div>
     <div class="figure" id="exploded"></div>
@@ -992,5 +1019,560 @@ tr:last-child td { border-bottom: 0; }
 })();
 </script>
 
+<script>
+// The centre: Sea and Peak with a bowl of water (side and top views).
+(() => {
+  const P = [
+    { a: -Math.PI / 2, rgb: [95, 174, 106] },   // A, Wood (back)
+    { a: Math.PI / 6, rgb: [229, 84, 75] },     // B, Fire (front right)
+    { a: Math.PI * 5 / 6, rgb: [74, 128, 196] } // C, Water (front left)
+  ];
+  const MIX = [240, 220, 178]; // where all three meet: warm light
+  const STATES = {
+    rest:    { p: [0, 0, 0], g: 0, say: 'Nobody: the centre breathes faintly at 6 breaths per minute.' },
+    one:     { p: [1, 1, 1], g: 0, say: 'Hands differ: three people hold, but their five-finger patterns are unalike. Each light stays on its own side, and the sea is choppy.' },
+    two:     { p: [1, 1, 1], g: 0.5, say: 'Getting closer: the three hands press in more similar ways. The colours move toward each other, the sea calms and the light climbs.' },
+    three:   { p: [1, 1, 1], g: 1, say: 'In tune: the three hands press alike. One shared colour, a calm sea, and the light reaches the top.' },
+    release: { p: [0, 0, 0], g: 0, say: 'Letting go together: one slow bloom, then the centre fades.' },
+  };
+  const ORDER = ['rest', 'one', 'two', 'three', 'release'];
+  const HOLD = 6;
+  const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const W = 600, H = 520, CX = 300, TY = 440, S = 11, TILT = 0.22;
+  const clamp = (x, a = 0, b = 1) => Math.max(a, Math.min(b, x));
+  const sstep = (e0, e1, x) => { const t = clamp((x - e0) / (e1 - e0)); return t * t * (3 - 2 * t); };
+  const mix = (a, b, t) => a.map((v, i) => v + (b[i] - v) * t);
+  const proj = (x, y, z) => [CX + x * S, TY - z * S + y * S * TILT];
+  const angd = (a, b) => Math.abs(Math.atan2(Math.sin(a - b), Math.cos(a - b)));
+
+  function setup(id) {
+    const c = document.getElementById(id), dpr = Math.min(2, devicePixelRatio || 1);
+    c.width = W * dpr; c.height = H * dpr;
+    const ctx = c.getContext('2d'); ctx.scale(dpr, dpr);
+    return ctx;
+  }
+  const atctx = setup('a-top'), asctx = setup('a-side');
+  const drawAll = () => { centreTop(atctx, true); centreSide(asctx, true); };
+
+  const cur = { p: [0, 0, 0], g: 0, bloom: 0 };
+  let mode = 'auto', target = 'rest', since = 0, last = 0, t = 0;
+
+  function ground(ctx, scale = true) {
+    ctx.globalCompositeOperation = 'source-over';
+    ctx.fillStyle = '#0c1013'; ctx.fillRect(0, 0, W, H);
+    // tabletop and lid
+    ctx.strokeStyle = '#2a343a'; ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(24, TY + 30); ctx.lineTo(W - 24, TY + 30); ctx.stroke();
+    ctx.fillStyle = '#12181c';
+    ctx.beginPath(); ctx.ellipse(CX, TY, 26 * S, 26 * S * TILT, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = 'rgba(210,220,225,.07)'; ctx.strokeStyle = '#3a464d';
+    ctx.beginPath(); ctx.ellipse(CX, TY, 13 * S, 13 * S * TILT, 0, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+    // height scale
+    ctx.fillStyle = '#8c9a98'; ctx.font = '10px IBM Plex Mono, monospace'; ctx.textAlign = 'end';
+    ctx.strokeStyle = '#5d6a6f';
+    if (scale) {
+      ctx.beginPath(); ctx.moveTo(40, TY); ctx.lineTo(40, TY - 32 * S); ctx.stroke();
+      [0, 10, 20, 30].forEach(h => { ctx.beginPath(); ctx.moveTo(36, TY - h * S); ctx.lineTo(44, TY - h * S); ctx.stroke(); ctx.fillText(h, 32, TY - h * S + 4); });
+      ctx.textAlign = 'start'; ctx.fillText('cm above lid', 50, TY - 32 * S + 4);
+    }
+    ctx.textAlign = 'center'; ctx.fillText('lid Ø26 cm', CX, TY + 48);
+  }
+
+  // A line drawn as short segments, each with its own colour and strength (never dots).
+  function glowLine(ctx, pts, colAt, width, depth) {
+    ctx.lineCap = 'butt';
+    ctx.strokeStyle = `rgba(200,215,220,${0.13 * depth})`; ctx.lineWidth = width;
+    ctx.beginPath(); pts.forEach((q, i) => i ? ctx.lineTo(q[0], q[1]) : ctx.moveTo(q[0], q[1])); ctx.stroke();
+    ctx.globalCompositeOperation = 'lighter';
+    for (let j = 0; j < pts.length - 1; j++) {
+      const s = (j + 0.5) / (pts.length - 1), [col, I] = colAt(s);
+      if (I < 0.02) continue;
+      const a = clamp(I) * depth;
+      ctx.strokeStyle = `rgba(${col[0] | 0},${col[1] | 0},${col[2] | 0},${0.16 * a})`; ctx.lineWidth = width + 9;
+      ctx.beginPath(); ctx.moveTo(pts[j][0], pts[j][1]); ctx.lineTo(pts[j + 1][0], pts[j + 1][1]); ctx.stroke();
+      ctx.strokeStyle = `rgba(${col[0] | 0},${col[1] | 0},${col[2] | 0},${0.85 * a})`; ctx.lineWidth = width;
+      ctx.beginPath(); ctx.moveTo(pts[j][0], pts[j][1]); ctx.lineTo(pts[j + 1][0], pts[j + 1][1]); ctx.stroke();
+    }
+    ctx.globalCompositeOperation = 'source-over';
+  }
+
+  const present = () => cur.p.reduce((s, v) => s + v, 0);
+  function meetColour() {
+    let w = 0, c = [0, 0, 0];
+    P.forEach((q, i) => { w += cur.p[i]; c = c.map((v, k) => v + q.rgb[k] * cur.p[i]); });
+    const own = w > 0.01 ? c.map(v => v / w) : MIX;
+    return mix(own, MIX, cur.g);
+  }
+  const breath = () => 0.86 + 0.14 * Math.sin(t * Math.PI * 2 / 10);
+
+  // ---------- 1. fountain of light ----------
+  const FRINGS = [
+    { r: 11, n: 14, tilt: 34, L: 14, w: 2.4, lv: (p, g) => p * 0.95, toMix: 0.15, spill: true },
+    { r: 7, n: 10, tilt: 20, L: 20, w: 2.8, lv: (p, g) => p * clamp(g * 2.2 - 0.1), toMix: 0.4, spill: true },
+    { r: 3.5, n: 6, tilt: 9, L: 25, w: 3.2, lv: (p, g) => p * clamp(g * 2.2 - 1.1), toMix: 0.7, spill: false },
+  ];
+  const frods = [];
+  FRINGS.forEach((R, ri) => { for (let k = 0; k < R.n; k++) { const a = (k / R.n) * Math.PI * 2 + ri * 0.21; frods.push({ R, a }); } });
+  frods.push({ core: true, a: Math.PI / 2 });
+
+  function fountain(ctx) {
+    ground(ctx);
+    const b = breath(), meet = meetColour(), spill = sstep(0.82, 1, cur.g), any = clamp(present());
+    const rods = frods.map(r => {
+      const R = r.R, rad = r.core ? 0 : R.r, tilt = r.core ? 0 : R.tilt * Math.PI / 180, L = r.core ? 30 : R.L;
+      const x0 = Math.cos(r.a) * rad, y0 = Math.sin(r.a) * rad;
+      const pts = [];
+      for (let j = 0; j <= 18; j++) { const s = j / 18; pts.push(proj(x0 + Math.cos(r.a) * Math.sin(tilt) * L * s, y0 + Math.sin(r.a) * Math.sin(tilt) * L * s, Math.cos(tilt) * L * s)); }
+      return { r, pts, y: y0 };
+    }).sort((A, B) => A.y - B.y);
+    for (const { r, pts, y } of rods) {
+      const depth = y < -0.5 ? 0.6 : 1;
+      let own = 0, best = 9;
+      P.forEach((q, i) => { const d = angd(r.a, q.a); if (d < best) { best = d; own = i; } });
+      const lv = r.core ? any * clamp(cur.g * 1.4 - 0.4) : r.R.lv(cur.p[own], cur.g);
+      const base = r.core ? meet : mix(P[own].rgb, meet, r.R.toMix * cur.g);
+      const colAt = s => {
+        const rise = sstep(s - 0.1, s + 0.1, lv * 1.1) * (0.72 + 0.28 * Math.sin((s * 1.6 - t * 0.35) * Math.PI * 2));
+        const fall = (!r.core && r.R.spill) ? spill * sstep(1 - spill * 0.75 - 0.1, 1 - spill * 0.75 + 0.1, s) * (0.6 + 0.4 * Math.sin((s * 1.6 + t * 0.35) * Math.PI * 2)) : 0;
+        const bl = cur.bloom * 0.95;
+        const I = rise * 0.9 + fall * 0.8 + bl, w = Math.max(I, 1e-6);
+        const col = base.map((v, k) => (v * rise * 0.9 + MIX[k] * (fall * 0.8 + bl)) / w);
+        return [col, clamp(I) * b + (r.core ? 0.06 * b : 0)];
+      };
+      glowLine(ctx, pts, colAt, r.core ? 5 : r.R.w, depth);
+    }
+  }
+
+  // ---------- 2. sea and peak ----------
+  const WAVES = [ { r: 12, h: 0.8, amp: 1.5, n: 9, lv: (p, g) => p * 0.95 }, { r: 9.5, h: 1.5, amp: 1.7, n: 7, lv: (p, g) => p * clamp(g * 2.2 - 0.1) }, { r: 7, h: 2.2, amp: 1.9, n: 5, lv: (p, g) => p * clamp(g * 2.2 - 0.6) } ];
+  const PEAK = [[0, 0, 30], [1.4, 0.6, 24], [-1.2, 1, 21], [0.3, -1.5, 18], [-1.6, -0.8, 15], [1.9, -1, 13], [-0.4, 1.9, 17]];
+  function sea(ctx) {
+    ground(ctx);
+    const b = breath(), meet = meetColour(), any = clamp(present()), calm = sstep(0.55, 1, cur.g);
+    WAVES.forEach((Wv, wi) => {
+      // fixed crest profile; only the light moves
+      const prof = ph => Wv.h + Wv.amp * Math.pow(0.5 + 0.5 * Math.cos(Wv.n * ph + wi * 0.7), 2.2);
+      for (const half of ['back', 'front']) {
+        const steps = 120;
+        for (let j = 0; j < steps; j++) {
+          const a0 = j / steps * Math.PI * 2, a1 = (j + 1) / steps * Math.PI * 2, am = (a0 + a1) / 2;
+          if ((Math.sin(am) > 0) !== (half === 'front')) continue;
+          const front = half === 'front';
+          let wsum = 0, col = [0, 0, 0], ch = 0;
+          P.forEach((q, i) => {
+            const w = cur.p[i] * Math.exp(-((angd(am, q.a) / (0.8 + calm * 2.2)) ** 2));
+            wsum += w; col = col.map((v, c) => v + q.rgb[c] * w);
+            ch += w * Math.sin(am * 11 - t * (2.2 + i * 0.9) + i * 2.1); // each person's own wave train
+          });
+          const own = wsum > 0.001 ? col.map(v => v / wsum) : MIX;
+          const lv = Wv.lv(clamp(wsum), cur.g);
+          const choppy = (1 - calm) * (0.55 + 0.45 * (wsum > 0.001 ? ch / wsum : 0));
+          const smooth = calm * (0.75 + 0.25 * Math.sin(Wv.n * am - t * 0.6));
+          const c = mix(mix(own, meet, cur.g * (0.3 + wi * 0.25)), MIX, cur.bloom);
+          const I = clamp(lv * (choppy + smooth) + cur.bloom * 0.9) * b * (front ? 1 : 0.5);
+          const q0 = proj(Math.cos(a0) * Wv.r, Math.sin(a0) * Wv.r, prof(a0)), q1 = proj(Math.cos(a1) * Wv.r, Math.sin(a1) * Wv.r, prof(a1));
+          ctx.strokeStyle = `rgba(200,215,220,${front ? 0.2 : 0.1})`; ctx.lineWidth = 2;
+          ctx.beginPath(); ctx.moveTo(q0[0], q0[1]); ctx.lineTo(q1[0], q1[1]); ctx.stroke();
+          if (I < 0.02) continue;
+          ctx.globalCompositeOperation = 'lighter';
+          ctx.strokeStyle = `rgba(${c[0] | 0},${c[1] | 0},${c[2] | 0},${0.18 * I})`; ctx.lineWidth = 11;
+          ctx.beginPath(); ctx.moveTo(q0[0], q0[1]); ctx.lineTo(q1[0], q1[1]); ctx.stroke();
+          ctx.strokeStyle = `rgba(${c[0] | 0},${c[1] | 0},${c[2] | 0},${0.9 * I})`; ctx.lineWidth = 2.6;
+          ctx.beginPath(); ctx.moveTo(q0[0], q0[1]); ctx.lineTo(q1[0], q1[1]); ctx.stroke();
+          ctx.globalCompositeOperation = 'source-over';
+        }
+      }
+      if (wi === 1) {
+        // the peak sits inside the middle wave ring
+        PEAK.slice().sort((A, B) => A[1] - B[1]).forEach(([x, y, h]) => {
+          const pts = []; for (let j = 0; j <= 18; j++) pts.push(proj(x, y, (j / 18) * h));
+          const lv = any * clamp(cur.g * 1.5 - 0.5);
+          glowLine(ctx, pts, s => {
+            const I = sstep(s - 0.1, s + 0.1, lv * 1.1) * (0.75 + 0.25 * Math.sin((s * 1.4 - t * 0.3) * Math.PI * 2)) + cur.bloom * 0.9;
+            return [mix(meet, MIX, cur.bloom), I * b + 0.05 * b];
+          }, h === 30 ? 4.5 : 3.2, y < -0.5 ? 0.7 : 1);
+        });
+      }
+    });
+  }
+
+  // ---------- 3. jeonghwasu: a bowl of water ----------
+  const BOWL_R = 10, TOPY = 150, RS = 10;
+  function bowl(ctx) {
+    ground(ctx, false);
+    const b = breath(), meet = meetColour(), any = clamp(present());
+    // top view of the water surface
+    ctx.fillStyle = '#8c9a98'; ctx.font = '10px IBM Plex Mono, monospace'; ctx.textAlign = 'center';
+    ctx.fillText('water surface, from above', CX, TOPY - BOWL_R * RS - 14);
+    ctx.save();
+    ctx.beginPath(); ctx.arc(CX, TOPY, BOWL_R * RS, 0, Math.PI * 2); ctx.fillStyle = '#10161a'; ctx.fill();
+    ctx.strokeStyle = '#3a464d'; ctx.lineWidth = 1.2; ctx.stroke(); ctx.clip();
+    // soft under-light
+    const glow = ctx.createRadialGradient(CX, TOPY, 0, CX, TOPY, BOWL_R * RS);
+    const gc = mix(meet, MIX, cur.bloom), gl = (0.08 + 0.28 * any * (0.4 + 0.6 * cur.g) + 0.4 * cur.bloom) * b;
+    glow.addColorStop(0, `rgba(${gc[0] | 0},${gc[1] | 0},${gc[2] | 0},${gl})`); glow.addColorStop(1, 'rgba(0,0,0,0)');
+    ctx.fillStyle = glow; ctx.fillRect(CX - 120, TOPY - 120, 240, 240);
+    ctx.globalCompositeOperation = 'lighter';
+    const speed = 2.2 - 1.2 * cur.g, spacing = 2.4 + 1.6 * cur.g;
+    P.forEach((q, i) => {
+      if (cur.p[i] < 0.03) return;
+      // ripples start at the person's edge and drift to the centre as agreement rises
+      const k = 1 - cur.g, sx = CX + Math.cos(q.a) * BOWL_R * RS * 0.95 * k, sy = TOPY + Math.sin(q.a) * BOWL_R * RS * 0.95 * k;
+      const c = mix(q.rgb, meet, cur.g);
+      for (let n = 0; n < 7; n++) {
+        const r = ((t * speed + n * spacing) % (7 * spacing));
+        const fade = (1 - r / (7 * spacing)) * cur.p[i] * (1 - 0.66 * sstep(0.7, 1, cur.g) * (i ? 1 : 0));
+        if (r < 0.2 || fade < 0.02) continue;
+        ctx.strokeStyle = `rgba(${c[0] | 0},${c[1] | 0},${c[2] | 0},${0.7 * fade * b})`; ctx.lineWidth = 1.6;
+        ctx.beginPath(); ctx.arc(sx, sy, r * RS, 0, Math.PI * 2); ctx.stroke();
+      }
+    });
+    if (cur.bloom > 0.03) {
+      const r = (1 - cur.bloom) * BOWL_R * 1.1;
+      ctx.strokeStyle = `rgba(${MIX[0]},${MIX[1]},${MIX[2]},${0.8 * cur.bloom})`; ctx.lineWidth = 3;
+      ctx.beginPath(); ctx.arc(CX, TOPY, Math.max(0.5, r) * RS, 0, Math.PI * 2); ctx.stroke();
+    }
+    ctx.restore();
+    // three motors on the rim
+    P.forEach(q => { const x = CX + Math.cos(q.a) * (BOWL_R * RS + 7), y = TOPY + Math.sin(q.a) * (BOWL_R * RS + 7); ctx.fillStyle = `rgb(${q.rgb})`; ctx.fillRect(x - 3, y - 3, 6, 6); });
+    ctx.fillStyle = '#8c9a98'; ctx.textAlign = 'start'; ctx.fillText('■ motor on each person\'s side', 24, TOPY + BOWL_R * RS + 8);
+    // side view: a shallow bowl on the lid
+    const rimZ = 7, footR = 5;
+    const outline = [];
+    for (let j = 0; j <= 30; j++) { const u = j / 30, x = footR + (BOWL_R - footR) * Math.sin(u * Math.PI / 2), z = 0.8 + (rimZ - 0.8) * (1 - Math.cos(u * Math.PI / 2)); outline.push([x, z]); }
+    ctx.fillStyle = `rgba(${gc[0] | 0},${gc[1] | 0},${gc[2] | 0},${0.10 + 0.25 * gl})`;
+    const [wx, wy] = proj(0, 0, 5.2);
+    ctx.beginPath(); ctx.ellipse(wx, wy, 9.4 * S, 9.4 * S * TILT, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.strokeStyle = '#b9c4c6'; ctx.lineWidth = 1.4;
+    for (const side of [-1, 1]) { ctx.beginPath(); outline.forEach(([x, z], j) => { const [px, py] = proj(side * x, 0, z); j ? ctx.lineTo(px, py) : ctx.moveTo(px, py); }); ctx.stroke(); }
+    const [fx, fy] = proj(0, 0, 0.8), [rx, ry] = proj(0, 0, rimZ);
+    ctx.beginPath(); ctx.moveTo(fx - footR * S, fy); ctx.lineTo(fx + footR * S, fy); ctx.lineTo(fx + footR * S, TY); ctx.lineTo(fx - footR * S, TY); ctx.closePath(); ctx.stroke();
+    ctx.beginPath(); ctx.ellipse(rx, ry, BOWL_R * S, BOWL_R * S * TILT, 0, 0, Math.PI * 2); ctx.stroke();
+    ctx.fillStyle = '#8c9a98'; ctx.textAlign = 'start';
+    ctx.fillText('sealed bowl Ø20 cm, about 200 ml, on the lid', 24, ry - 34);
+  }
+
+  // ---------- 4. well of light: looking down into the drum ----------
+  function well(ctx) {
+    ctx.globalCompositeOperation = 'source-over';
+    ctx.fillStyle = '#0c1013'; ctx.fillRect(0, 0, W, H);
+    const cx = CX, cy = 230, SW = 16, T2 = 0.5;
+    const b = breath(), meet = meetColour(), any = clamp(present());
+    // tabletop and the mirror lid
+    ctx.fillStyle = '#12181c';
+    ctx.beginPath(); ctx.ellipse(cx, cy, 17 * SW, 17 * SW * T2, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = '#05080a'; ctx.strokeStyle = '#6b787d'; ctx.lineWidth = 1.2;
+    ctx.beginPath(); ctx.ellipse(cx, cy, 13 * SW, 13 * SW * T2, 0, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+    // reflections: each one smaller, lower and fainter; more of them show as agreement rises
+    const depth = 3 + 9 * clamp(any * 0.35 + cur.g * 0.65 + cur.bloom);
+    ctx.save();
+    ctx.beginPath(); ctx.ellipse(cx, cy, 12.6 * SW, 12.6 * SW * T2, 0, 0, Math.PI * 2); ctx.clip();
+    // light gathering at the bottom
+    const vy = cy + 34, deep = clamp(cur.g * any + cur.bloom);
+    if (deep > 0.02) {
+      const gc = mix(meet, MIX, cur.bloom), gr = ctx.createRadialGradient(cx, vy, 0, cx, vy, 70);
+      gr.addColorStop(0, `rgba(${gc[0] | 0},${gc[1] | 0},${gc[2] | 0},${0.55 * deep * b})`); gr.addColorStop(1, 'rgba(0,0,0,0)');
+      ctx.fillStyle = gr; ctx.fillRect(cx - 80, vy - 50, 160, 100);
+    }
+    ctx.globalCompositeOperation = 'lighter';
+    for (let k = Math.ceil(depth); k >= 0; k--) {
+      const f = Math.pow(0.84, k), fade = clamp(depth - k) * Math.pow(0.8, k);
+      const R = 12 * f * SW, ey = cy + (1 - f) * 34;
+      const wide = 0.75 + cur.g * 2.6 * (1 - f * 0.6) + cur.bloom * 3;
+      const steps = 96;
+      for (let j = 0; j < steps; j++) {
+        const ph = (j + 0.5) / steps * Math.PI * 2;
+        let wsum = 0, col = [0, 0, 0];
+        P.forEach((q, i) => { const w = cur.p[i] * Math.exp(-((angd(ph, q.a) / wide) ** 2)); wsum += w; col = col.map((v, c) => v + q.rgb[c] * w); });
+        const own = wsum > 0.001 ? col.map(v => v / wsum) : MIX;
+        const c = mix(mix(own, meet, cur.g * (1 - f * 0.5)), MIX, cur.bloom);
+        const I = clamp(clamp(wsum) * 0.95 + cur.bloom * 0.9 + 0.05) * fade * b;
+        if (I < 0.015) continue;
+        const a0 = ph - Math.PI / steps, a1 = ph + Math.PI / steps;
+        ctx.strokeStyle = `rgba(${c[0] | 0},${c[1] | 0},${c[2] | 0},${0.85 * I})`; ctx.lineWidth = Math.max(1, 3 * f);
+        ctx.beginPath(); ctx.ellipse(cx, ey, R, R * T2, 0, a0, a1); ctx.stroke();
+        ctx.strokeStyle = `rgba(${c[0] | 0},${c[1] | 0},${c[2] | 0},${0.15 * I})`; ctx.lineWidth = 10 * f + 2;
+        ctx.beginPath(); ctx.ellipse(cx, ey, R, R * T2, 0, a0, a1); ctx.stroke();
+      }
+    }
+    ctx.restore();
+    ctx.globalCompositeOperation = 'source-over';
+    // section key
+    const kx = 60, ky = 436;
+    ctx.fillStyle = '#8c9a98'; ctx.font = '10px IBM Plex Mono, monospace'; ctx.textAlign = 'start';
+    ctx.fillText('section through the drum', kx, ky - 14);
+    ctx.strokeStyle = '#6b787d'; ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(kx, ky); ctx.lineTo(kx + 180, ky); ctx.stroke();
+    ctx.setLineDash([3, 3]); ctx.beginPath(); ctx.moveTo(kx, ky + 1); ctx.lineTo(kx + 180, ky + 1); ctx.stroke(); ctx.setLineDash([]);
+    ctx.strokeStyle = '#3a464d'; ctx.beginPath(); ctx.moveTo(kx, ky + 50); ctx.lineTo(kx + 180, ky + 50); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(kx, ky); ctx.lineTo(kx, ky + 50); ctx.moveTo(kx + 180, ky); ctx.lineTo(kx + 180, ky + 50); ctx.stroke();
+    const sc = mix(meet, MIX, cur.bloom);
+    ctx.strokeStyle = `rgba(${sc[0] | 0},${sc[1] | 0},${sc[2] | 0},${0.3 + 0.6 * any})`; ctx.lineWidth = 3;
+    ctx.beginPath(); ctx.moveTo(kx + 3, ky + 10); ctx.lineTo(kx + 3, ky + 40); ctx.moveTo(kx + 177, ky + 10); ctx.lineTo(kx + 177, ky + 40); ctx.stroke();
+    ctx.fillStyle = '#8c9a98';
+    ctx.fillText('two-way mirror lid', kx + 192, ky + 4);
+    ctx.fillText('diffused LED strip on the wall', kx + 192, ky + 27);
+    ctx.fillText('mirror, 3 to 5 cm below', kx + 192, ky + 54);
+    ctx.textAlign = 'center'; ctx.fillText('looking down into the centre, Ø26 cm', cx, cy + 17 * SW * T2 + 22);
+  }
+
+  // ---------- 5. winding streams: the whole table from above ----------
+  const TS = 4.55, TCY = 258;
+  const loopPt = u => { const th = -Math.PI / 2 + 2 * Math.PI * u - 0.8 * Math.sin(6 * Math.PI * u) / 3; const r = 26 + 3.6 * Math.sin(9 * th + Math.PI / 2); return [CX + Math.cos(th) * r * TS, TCY + Math.sin(th) * r * TS]; };
+  function stream(ctx) {
+    ctx.globalCompositeOperation = 'source-over';
+    ctx.fillStyle = '#0c1013'; ctx.fillRect(0, 0, W, H);
+    const b = breath(), meet = meetColour(), any = clamp(present());
+    ctx.fillStyle = '#12181c'; ctx.strokeStyle = '#2a343a';
+    ctx.beginPath(); ctx.arc(CX, TCY, 50 * TS, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+    // channel bed
+    const N = 360, path = [];
+    for (let j = 0; j <= N; j++) path.push(loopPt(j / N));
+    ctx.strokeStyle = '#1b2328'; ctx.lineWidth = 10; ctx.lineJoin = 'round';
+    ctx.beginPath(); path.forEach((q, j) => j ? ctx.lineTo(q[0], q[1]) : ctx.moveTo(q[0], q[1])); ctx.stroke();
+    ctx.strokeStyle = 'rgba(200,215,220,.16)'; ctx.lineWidth = 1.5; ctx.stroke();
+    // inlets and spokes
+    const spoke = (a, r0, r1) => [[CX + Math.cos(a) * r0 * TS, TCY + Math.sin(a) * r0 * TS], [CX + Math.cos(a) * r1 * TS, TCY + Math.sin(a) * r1 * TS]];
+    ctx.globalCompositeOperation = 'lighter';
+    P.forEach((q, i) => {
+      const [s0, s1] = spoke(q.a, 41, 29.6);
+      ctx.strokeStyle = '#1b2328'; ctx.lineWidth = 8; ctx.beginPath(); ctx.moveTo(s0[0], s0[1]); ctx.lineTo(s1[0], s1[1]); ctx.stroke();
+      if (cur.p[i] > 0.02) {
+        const c = q.rgb;
+        ctx.strokeStyle = `rgba(${c[0]},${c[1]},${c[2]},${0.8 * cur.p[i] * b})`; ctx.lineWidth = 3;
+        ctx.beginPath(); ctx.moveTo(s0[0], s0[1]); ctx.lineTo(s1[0], s1[1]); ctx.stroke();
+      }
+      // spoke inward sits between two people
+      const sa = q.a + Math.PI / 3, [k0, k1] = spoke(sa, 22, 8);
+      ctx.strokeStyle = '#1b2328'; ctx.lineWidth = 8; ctx.beginPath(); ctx.moveTo(k0[0], k0[1]); ctx.lineTo(k1[0], k1[1]); ctx.stroke();
+      const sp = clamp(cur.g * 2 - 0.8) * any + cur.bloom;
+      if (sp > 0.02) {
+        for (let j = 0; j < 12; j++) {
+          const u0 = j / 12, u1 = (j + 1) / 12, w = 0.6 + 0.4 * Math.sin((u0 * 2 - t * 0.5) * Math.PI * 2);
+          ctx.strokeStyle = `rgba(${meet[0] | 0},${meet[1] | 0},${meet[2] | 0},${clamp(sp) * w * 0.85 * b})`; ctx.lineWidth = 3;
+          ctx.beginPath(); ctx.moveTo(k0[0] + (k1[0] - k0[0]) * u0, k0[1] + (k1[1] - k0[1]) * u0); ctx.lineTo(k0[0] + (k1[0] - k0[0]) * u1, k0[1] + (k1[1] - k0[1]) * u1); ctx.stroke();
+        }
+      }
+    });
+    // light floating along the stream, slowing in front of each seat
+    P.forEach((q, i) => {
+      if (cur.p[i] < 0.02) return;
+      const start = [0, 1 / 3, 2 / 3][[0, 1, 2].indexOf(i)];
+      for (let n = 0; n < 2; n++) {
+        const head = (start + n * 0.5 + t * 0.045) % 1;
+        const c = mix(q.rgb, meet, cur.g * 0.6);
+        for (let j = 0; j < 22; j++) {
+          const u0 = head - j * 0.004, u1 = head - (j + 1) * 0.004, a = (1 - j / 22) * cur.p[i] * b;
+          const p0 = loopPt((u0 + 1) % 1), p1 = loopPt((u1 + 1) % 1);
+          ctx.strokeStyle = `rgba(${c[0] | 0},${c[1] | 0},${c[2] | 0},${0.9 * a})`; ctx.lineWidth = 3.4;
+          ctx.beginPath(); ctx.moveTo(p0[0], p0[1]); ctx.lineTo(p1[0], p1[1]); ctx.stroke();
+          ctx.strokeStyle = `rgba(${c[0] | 0},${c[1] | 0},${c[2] | 0},${0.14 * a})`; ctx.lineWidth = 12;
+          ctx.beginPath(); ctx.moveTo(p0[0], p0[1]); ctx.lineTo(p1[0], p1[1]); ctx.stroke();
+        }
+      }
+    });
+    // the centre pool
+    const pool = clamp(cur.g * 1.6 - 0.6) * any + cur.bloom;
+    const pc = mix(meet, MIX, cur.bloom), gr = ctx.createRadialGradient(CX, TCY, 0, CX, TCY, 8 * TS);
+    gr.addColorStop(0, `rgba(${pc[0] | 0},${pc[1] | 0},${pc[2] | 0},${(0.06 + 0.6 * clamp(pool)) * b})`); gr.addColorStop(1, 'rgba(0,0,0,0)');
+    ctx.fillStyle = gr; ctx.beginPath(); ctx.arc(CX, TCY, 8 * TS, 0, Math.PI * 2); ctx.fill();
+    ctx.globalCompositeOperation = 'source-over';
+    ctx.strokeStyle = '#3a464d'; ctx.lineWidth = 1; ctx.beginPath(); ctx.arc(CX, TCY, 8 * TS, 0, Math.PI * 2); ctx.stroke();
+    // cups
+    P.forEach((q, i) => {
+      const x = CX + Math.cos(q.a) * 43 * TS, y = TCY + Math.sin(q.a) * 43 * TS;
+      ctx.fillStyle = `rgba(${q.rgb[0]},${q.rgb[1]},${q.rgb[2]},${0.2 + 0.8 * cur.p[i]})`; ctx.strokeStyle = '#8c9a98';
+      ctx.beginPath(); ctx.arc(x, y, 3.5 * TS, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+      ctx.fillStyle = '#dfe5e3'; ctx.font = '600 12px IBM Plex Sans, sans-serif'; ctx.textAlign = 'center';
+      ctx.textAlign = 'start'; ctx.fillText('ABC'[i], x + 3.5 * TS + 6, y + 4);
+    });
+    ctx.fillStyle = '#8c9a98'; ctx.font = '10px IBM Plex Mono, monospace'; ctx.textAlign = 'center';
+    ctx.fillText('whole table from above, Ø100 cm', CX, H - 12);
+  }
+
+  // ---------- chosen: one journey (winding streams → sea → jeonghwasu) ----------
+  const CT = 4.55, CCY = 258;
+  function seaRingTop(ctx, r, n, cx, cy, sc, wi) {
+    const calm = sstep(0.55, 1, cur.g), meet = meetColour(), b = breath(), steps = 140;
+    for (let j = 0; j < steps; j++) {
+      const a0 = j / steps * Math.PI * 2, a1 = (j + 1) / steps * Math.PI * 2, am = (a0 + a1) / 2;
+      const rr = a => r + 0.9 * Math.sin(n * a);
+      let wsum = 0, col = [0, 0, 0], ch = 0;
+      P.forEach((q, i) => { const w = cur.p[i] * Math.exp(-((angd(am, q.a) / (0.8 + calm * 2.2)) ** 2)); wsum += w; col = col.map((v, c) => v + q.rgb[c] * w); ch += w * Math.sin(am * 11 - t * (2.2 + i * 0.9) + i * 2.1); });
+      const own = wsum > 0.001 ? col.map(v => v / wsum) : MIX;
+      const choppy = (1 - calm) * (0.55 + 0.45 * (wsum > 0.001 ? ch / wsum : 0)), smooth = calm * (0.75 + 0.25 * Math.sin(n * am - t * 0.6));
+      const lv = wi === 0 ? clamp(wsum) * 0.95 : clamp(wsum) * clamp(cur.g * 2.2 - 0.1);
+      const c = mix(mix(own, meet, cur.g * (0.3 + wi * 0.3)), MIX, cur.bloom);
+      const I = clamp(lv * (choppy + smooth) + cur.bloom * 0.9) * b;
+      const x0 = cx + Math.cos(a0) * rr(a0) * sc, y0 = cy + Math.sin(a0) * rr(a0) * sc, x1 = cx + Math.cos(a1) * rr(a1) * sc, y1 = cy + Math.sin(a1) * rr(a1) * sc;
+      ctx.strokeStyle = 'rgba(200,215,220,.16)'; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.moveTo(x0, y0); ctx.lineTo(x1, y1); ctx.stroke();
+      if (I < 0.02) continue;
+      ctx.globalCompositeOperation = 'lighter';
+      ctx.strokeStyle = `rgba(${c[0] | 0},${c[1] | 0},${c[2] | 0},${0.16 * I})`; ctx.lineWidth = 10; ctx.beginPath(); ctx.moveTo(x0, y0); ctx.lineTo(x1, y1); ctx.stroke();
+      ctx.strokeStyle = `rgba(${c[0] | 0},${c[1] | 0},${c[2] | 0},${0.9 * I})`; ctx.lineWidth = 2.6; ctx.beginPath(); ctx.moveTo(x0, y0); ctx.lineTo(x1, y1); ctx.stroke();
+      ctx.globalCompositeOperation = 'source-over';
+    }
+  }
+  function ripples(ctx, cx, cy, R, sc) {
+    const meet = meetColour(), b = breath();
+    ctx.save(); ctx.beginPath(); ctx.arc(cx, cy, R * sc, 0, Math.PI * 2); ctx.clip();
+    const any = clamp(present()), gc = mix(meet, MIX, cur.bloom), gl = (0.08 + 0.3 * any * (0.4 + 0.6 * cur.g) + 0.4 * cur.bloom) * b;
+    const glow = ctx.createRadialGradient(cx, cy, 0, cx, cy, R * sc);
+    glow.addColorStop(0, `rgba(${gc[0] | 0},${gc[1] | 0},${gc[2] | 0},${gl})`); glow.addColorStop(1, 'rgba(0,0,0,0)');
+    ctx.fillStyle = glow; ctx.fillRect(cx - R * sc, cy - R * sc, 2 * R * sc, 2 * R * sc);
+    ctx.globalCompositeOperation = 'lighter';
+    const speed = 1.6 - 0.9 * cur.g, spacing = 1.8 + 1.2 * cur.g;
+    P.forEach((q, i) => {
+      if (cur.p[i] < 0.03) return;
+      const k = 1 - cur.g, sx = cx + Math.cos(q.a) * R * sc * 0.95 * k, sy = cy + Math.sin(q.a) * R * sc * 0.95 * k, c = mix(q.rgb, meet, cur.g);
+      for (let n = 0; n < 7; n++) {
+        const r = (t * speed + n * spacing) % (7 * spacing), fade = (1 - r / (7 * spacing)) * cur.p[i] * (1 - 0.66 * sstep(0.7, 1, cur.g) * (i ? 1 : 0));
+        if (r < 0.15 || fade < 0.02) continue;
+        ctx.strokeStyle = `rgba(${c[0] | 0},${c[1] | 0},${c[2] | 0},${0.7 * fade * b})`; ctx.lineWidth = 1.4;
+        ctx.beginPath(); ctx.arc(sx, sy, r * sc, 0, Math.PI * 2); ctx.stroke();
+      }
+    });
+    ctx.restore();
+    ctx.strokeStyle = '#8c9a98'; ctx.lineWidth = 1.2; ctx.beginPath(); ctx.arc(cx, cy, R * sc, 0, Math.PI * 2); ctx.stroke();
+  }
+  // ---------- the centre from above: vessels, optional sea rings, the bowl ----------
+  function centreTop(ctx, withSea) {
+    ctx.globalCompositeOperation = 'source-over';
+    ctx.fillStyle = '#0c1013'; ctx.fillRect(0, 0, W, H);
+    const sc = 9.4, cy = 258, b = breath(), meet = meetColour();
+    ctx.fillStyle = '#12181c'; ctx.beginPath(); ctx.arc(CX, cy, 24 * sc, 0, Math.PI * 2); ctx.fill();
+    ctx.strokeStyle = '#3a464d'; ctx.lineWidth = 1; ctx.beginPath(); ctx.arc(CX, cy, 13 * sc, 0, Math.PI * 2); ctx.stroke();
+    // vessels arriving from each cup
+    const end = withSea ? 17.6 : 13;
+    P.forEach((q, i) => {
+      const x0 = CX + Math.cos(q.a) * 24 * sc, y0 = cy + Math.sin(q.a) * 24 * sc, x1 = CX + Math.cos(q.a) * end * sc, y1 = cy + Math.sin(q.a) * end * sc;
+      ctx.strokeStyle = '#1b2328'; ctx.lineWidth = 8; ctx.beginPath(); ctx.moveTo(x0, y0); ctx.lineTo(x1, y1); ctx.stroke();
+      if (cur.p[i] < 0.02) return;
+      ctx.globalCompositeOperation = 'lighter';
+      for (let j = 0; j < 14; j++) {
+        const u0 = j / 14, u1 = (j + 1) / 14, w = 0.55 + 0.45 * Math.sin((u0 * 1.5 - t * 0.6) * Math.PI * 2);
+        ctx.strokeStyle = `rgba(${q.rgb},${0.85 * w * cur.p[i] * b})`; ctx.lineWidth = 3;
+        ctx.beginPath(); ctx.moveTo(x0 + (x1 - x0) * u0, y0 + (y1 - y0) * u0); ctx.lineTo(x0 + (x1 - x0) * u1, y0 + (y1 - y0) * u1); ctx.stroke();
+      }
+      ctx.globalCompositeOperation = 'source-over';
+    });
+    if (withSea) { seaRingTop(ctx, 17, 11, CX, cy, sc, 0); seaRingTop(ctx, 14, 9, CX, cy, sc, 1); }
+    ripples(ctx, CX, cy, 8, sc);
+    ctx.fillStyle = '#8c9a98'; ctx.font = '10px IBM Plex Mono, monospace'; ctx.textAlign = 'center';
+    ctx.fillText(withSea ? 'from above: rivers (vessels) → sea (wave rings) → peak and bowl' : 'from above: vessels → bowl', CX, H - 12);
+  }
+
+  function centreSide(ctx, withSea) {
+    ground(ctx);
+    const b = breath(), meet = meetColour(), any = clamp(present()), calm = sstep(0.55, 1, cur.g);
+    // water patterns on the ceiling: a soft moving net of lines, never dots
+    const cg = clamp(any * (0.3 + 0.7 * cur.g) + cur.bloom), cc = mix(meet, MIX, cur.bloom);
+    if (cg > 0.03) {
+      ctx.globalCompositeOperation = 'lighter';
+      for (let k = 0; k < 7; k++) {
+        ctx.strokeStyle = `rgba(${cc[0] | 0},${cc[1] | 0},${cc[2] | 0},${0.22 * cg * b})`; ctx.lineWidth = 1.4;
+        ctx.beginPath();
+        for (let x = 160; x <= 460; x += 6) { const y = 52 + k * 7 + 6 * Math.sin(x * 0.035 + t * (0.6 + k * 0.07) + k) + 4 * Math.sin(x * 0.011 - t * 0.4); x === 160 ? ctx.moveTo(x, y) : ctx.lineTo(x, y); }
+        ctx.stroke();
+      }
+      ctx.globalCompositeOperation = 'source-over';
+    }
+    ctx.fillStyle = '#8c9a98'; ctx.font = '10px IBM Plex Mono, monospace'; ctx.textAlign = 'center';
+    ctx.fillText('water patterns on the ceiling', CX, 40);
+    // sea rings on the tabletop, around the lid
+    [[17, 0.6, 1.6, 11], [14, 1.0, 1.9, 9]].forEach(([r, h, amp, n], wi) => {
+      if (withSea) {
+      const prof = ph => h + amp * Math.pow(0.5 + 0.5 * Math.cos(n * ph + wi), 2.2);
+      for (const half of ['back', 'front']) {
+        for (let j = 0; j < 140; j++) {
+          const a0 = j / 140 * Math.PI * 2, a1 = (j + 1) / 140 * Math.PI * 2, am = (a0 + a1) / 2, front = Math.sin(am) > 0;
+          if (front !== (half === 'front')) continue;
+          let wsum = 0, col = [0, 0, 0], ch = 0;
+          P.forEach((q, i) => { const w = cur.p[i] * Math.exp(-((angd(am, q.a) / (0.8 + calm * 2.2)) ** 2)); wsum += w; col = col.map((v, c) => v + q.rgb[c] * w); ch += w * Math.sin(am * 11 - t * (2.2 + i * 0.9) + i * 2.1); });
+          const own = wsum > 0.001 ? col.map(v => v / wsum) : MIX;
+          const lv = wi === 0 ? clamp(wsum) * 0.95 : clamp(wsum) * clamp(cur.g * 2.2 - 0.1);
+          const I = clamp(lv * ((1 - calm) * (0.55 + 0.45 * (wsum > 0.001 ? ch / wsum : 0)) + calm * (0.75 + 0.25 * Math.sin(n * am - t * 0.6))) + cur.bloom * 0.9) * b * (front ? 1 : 0.5);
+          const c = mix(mix(own, meet, cur.g * (0.3 + wi * 0.3)), MIX, cur.bloom);
+          const q0 = proj(Math.cos(a0) * r, Math.sin(a0) * r, prof(a0)), q1 = proj(Math.cos(a1) * r, Math.sin(a1) * r, prof(a1));
+          ctx.strokeStyle = `rgba(200,215,220,${front ? 0.2 : 0.1})`; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(q0[0], q0[1]); ctx.lineTo(q1[0], q1[1]); ctx.stroke();
+          if (I < 0.02) continue;
+          ctx.globalCompositeOperation = 'lighter';
+          ctx.strokeStyle = `rgba(${c[0] | 0},${c[1] | 0},${c[2] | 0},${0.18 * I})`; ctx.lineWidth = 10; ctx.beginPath(); ctx.moveTo(q0[0], q0[1]); ctx.lineTo(q1[0], q1[1]); ctx.stroke();
+          ctx.strokeStyle = `rgba(${c[0] | 0},${c[1] | 0},${c[2] | 0},${0.9 * I})`; ctx.lineWidth = 2.4; ctx.beginPath(); ctx.moveTo(q0[0], q0[1]); ctx.lineTo(q1[0], q1[1]); ctx.stroke();
+          ctx.globalCompositeOperation = 'source-over';
+        }
+      }
+      }
+      if (wi === 1) {
+        // stone (the peak) and the bowl of water on it
+        const stone = [];
+        for (let j = 0; j <= 40; j++) { const u = j / 40, a = Math.PI * u; stone.push(proj(-Math.cos(a) * (6.5 + 0.6 * Math.sin(u * 9)), 0, Math.sin(a) * (4.6 + 0.5 * Math.sin(u * 5 + 1)))); }
+        ctx.fillStyle = '#20282c'; ctx.strokeStyle = '#5d6a6f'; ctx.lineWidth = 1.2;
+        ctx.beginPath(); stone.forEach((q, j) => j ? ctx.lineTo(q[0], q[1]) : ctx.moveTo(q[0], q[1])); ctx.closePath(); ctx.fill(); ctx.stroke();
+        const z0 = 4.4, rimZ = z0 + 5.5, R = 8, foot = 3.5, gc = mix(meet, MIX, cur.bloom);
+        const gl = (0.1 + 0.4 * any * (0.4 + 0.6 * cur.g) + 0.4 * cur.bloom) * b;
+        const [wx, wy] = proj(0, 0, z0 + 3.8);
+        ctx.globalCompositeOperation = 'lighter';
+        const gr = ctx.createRadialGradient(wx, wy, 0, wx, wy, R * S * 1.3);
+        gr.addColorStop(0, `rgba(${gc[0] | 0},${gc[1] | 0},${gc[2] | 0},${gl})`); gr.addColorStop(1, 'rgba(0,0,0,0)');
+        ctx.fillStyle = gr; ctx.fillRect(wx - R * S * 1.4, wy - R * S, R * S * 2.8, R * S * 2);
+        ctx.globalCompositeOperation = 'source-over';
+        ctx.fillStyle = `rgba(${gc[0] | 0},${gc[1] | 0},${gc[2] | 0},${0.12 + 0.3 * gl})`;
+        ctx.beginPath(); ctx.ellipse(wx, wy, (R - 0.6) * S, (R - 0.6) * S * TILT, 0, 0, Math.PI * 2); ctx.fill();
+        ctx.strokeStyle = '#b9c4c6'; ctx.lineWidth = 1.3;
+        for (const side of [-1, 1]) { ctx.beginPath(); for (let j = 0; j <= 24; j++) { const u = j / 24, x = foot + (R - foot) * Math.sin(u * Math.PI / 2), z = z0 + (rimZ - z0) * (1 - Math.cos(u * Math.PI / 2)); const [px, py] = proj(side * x, 0, z); j ? ctx.lineTo(px, py) : ctx.moveTo(px, py); } ctx.stroke(); }
+        const [rx, ry] = proj(0, 0, rimZ);
+        ctx.beginPath(); ctx.ellipse(rx, ry, R * S, R * S * TILT, 0, 0, Math.PI * 2); ctx.stroke();
+        ctx.fillStyle = '#8c9a98'; ctx.textAlign = 'start'; ctx.font = '10px IBM Plex Mono, monospace';
+        ctx.fillText('bowl of water Ø16 cm', rx + R * S + 12, ry - 2);
+        ctx.fillText('on the stone (the peak, 崖)', rx + R * S + 12, ry + 12);
+      }
+    });
+    ctx.fillStyle = '#8c9a98'; ctx.textAlign = 'start';
+    if (withSea) ctx.fillText('sea rings r 14 / 17 cm, on the tabletop', 24, TY + 68);
+  }
+
+  // ---------- state ----------
+  const buttons = [...document.querySelectorAll('[data-dir]')];
+  const stateLine = document.getElementById('dir-state');
+  function go(name) {
+    if (name === 'release' && target !== 'release') cur.bloom = 1;
+    target = name; since = 0;
+    stateLine.textContent = STATES[name].say;
+  }
+  buttons.forEach(btn => btn.addEventListener('click', () => {
+    mode = btn.dataset.dir === 'auto' ? 'auto' : 'manual';
+    buttons.forEach(x => x.setAttribute('aria-pressed', String(x.dataset.dir === btn.dataset.dir)));
+    if (mode === 'manual') go(btn.dataset.dir); else go('rest');
+  }));
+
+  let visible = true;
+  const seen = new Set();
+  const io = new IntersectionObserver(es => { es.forEach(e => e.isIntersecting ? seen.add(e.target) : seen.delete(e.target)); visible = seen.size > 0; });
+  io.observe(document.getElementById('water'));
+
+  function frame(now) {
+    const dt = Math.min(0.1, (now - (last || now)) / 1000); last = now;
+    if (visible) {
+      t += dt; since += dt;
+      if (mode === 'auto' && since > HOLD) go(ORDER[(ORDER.indexOf(target) + 1) % ORDER.length]);
+      const st = STATES[target], kp = 1 - Math.exp(-dt / 0.9), kg = 1 - Math.exp(-dt / 1.6);
+      cur.p = cur.p.map((v, i) => v + (st.p[i] - v) * kp);
+      cur.g += (st.g - cur.g) * kg;
+      cur.bloom *= Math.exp(-dt / 1.8);
+      drawAll();
+    }
+    if (!reduced) requestAnimationFrame(frame);
+  }
+  if (reduced) {
+    // one still frame per state, no animation
+    buttons.forEach(btn => btn.addEventListener('click', () => {
+      const st = STATES[target]; cur.p = st.p.slice(); cur.g = st.g; cur.bloom = target === 'release' ? 0.6 : 0;
+      drawAll();
+    }));
+    cur.p = [1, 1, 1]; cur.g = 1; drawAll();
+  } else requestAnimationFrame(frame);
+})();
+</script>
 </body>
 </html>
