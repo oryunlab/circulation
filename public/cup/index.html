@@ -8,7 +8,7 @@
 <meta name="description" content="Your phone becomes a cupping cup. Place it on the skin, hold still, release, and keep the mark you made together for a moment.">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Gowun+Batang:wght@400;700&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
 <style>
-/* Layout: one dark screen. Top: the shared lake with everyone around it. Bottom: your cup and what to do next. Face-down: the whole screen is light on the skin. */
+/* Layout: one dark screen. Top: the shared lake with everyone around it. Bottom: your cup and what to do next. Placed: the screen becomes a glass cup seen from above, the skin drawing up inside it. */
 :root{
   color-scheme:dark;
   --bg:#0b0c0c; --fg:#ecefec; --muted:#9aa29e; --line:#2c3130; --panel:#151817; --accent:#a9c9b6; --warn:#e7a27c; --bruise:#8e2f62;
@@ -80,7 +80,7 @@ input[type=range]{width:100%;accent-color:var(--accent)}
       <div class="label">Circulation · RMIT Vietnam</div>
       <h1>Your phone is a cup</h1>
     </div>
-    <p class="lede">Lay it face-down on the skin. Stay still and the pull deepens. Lift it and the mark appears, made of everyone you held with. It fades, as a cupping mark does.</p>
+    <p class="lede">Lay it screen-up on your palm, forearm or thigh and watch through it, as through a glass cup. Stay still and the pull deepens. Lift it and the mark appears, made of everyone you held with. It fades, as a cupping mark does.</p>
     <div class="field">
       <span class="label">How</span>
       <div class="cards" id="modes" role="group" aria-label="How to cup">
@@ -100,10 +100,10 @@ input[type=range]{width:100%;accent-color:var(--accent)}
     <div class="field">
       <span class="label">Use on this phone</span>
       <div class="opts">
-        <label class="opt"><input type="checkbox" id="o-motion" checked><b>Face-down sensing</b><span>Knows when the cup is placed and how still you hold it. Without it, touch and hold the cup on screen to place it.</span></label>
+        <label class="opt"><input type="checkbox" id="o-motion" checked><b>Body sensing</b><span>Knows when the phone lies screen-up on your skin, and how still you hold it. Without it, touch and hold the cup on screen to place it.</span></label>
         <label class="opt"><input type="checkbox" id="o-sound" checked><b>Sound</b><span>The pull, the release, the five tones (placeholders).</span></label>
         <label class="opt"><input type="checkbox" id="o-vib" checked><b>Vibration</b><span>You feel the pull. Android only.</span></label>
-        <label class="opt"><input type="checkbox" id="o-torch"><b>Flashlight</b><span>While a cup pulls deep, the light on its back glows up to the ceiling, like the flame in fire cupping. Asks for the camera, used only to switch the light. Nothing is recorded.</span></label>
+        <label class="opt"><input type="checkbox" id="o-torch"><b>Flashlight</b><span>While a cup pulls deep, the light on its back shines into the skin on each in-breath, so the palm glows, a little like the warmth of fire cupping. It can feel slightly warm. Asks for the camera, used only to switch the light. Nothing is recorded.</span></label>
       </div>
     </div>
     <button class="go" id="go">Start</button>
@@ -121,7 +121,9 @@ input[type=range]{width:100%;accent-color:var(--accent)}
     <label class="opt"><input type="checkbox" id="s-sound"><b>Sound</b><span></span></label>
     <label class="opt"><input type="checkbox" id="s-vib"><b>Vibration</b><span id="s-vib-note"></span></label>
     <label class="opt"><input type="checkbox" id="s-torch"><b>Flashlight</b><span id="s-torch-note"></span></label>
-    <label class="opt"><input type="checkbox" id="s-motion"><b>Face-down sensing</b><span id="s-motion-note"></span></label>
+    <label class="opt"><input type="checkbox" id="s-motion"><b>Body sensing</b><span id="s-motion-note"></span></label>
+    <div class="row"><label for="s-skin">Skin sensitivity (lowest tremor that counts as skin)</label><output id="s-skin-o" class="status">0.030</output></div>
+    <input id="s-skin" type="range" min="0" max="0.15" step="0.005" value="0.03">
     <label class="opt"><input type="checkbox" id="s-debug"><b>Show the firmware state</b><span>For testing.</span></label>
     <span class="label">Invite to this group</span>
     <div id="qr"></div>
@@ -570,7 +572,7 @@ const ELCSS=ELRGB.map(c=>'rgb('+c.join(',')+')');
 const BRUISE=[142,47,98];
 const GROUPS=[['well','井'],['spring','滎'],['stream','輸'],['river','經'],['hap','合']];
 const ME=Math.random().toString(36).slice(2,10);
-const opt={sound:true,vib:true,torch:false,motion:true,debug:false,bright:1,str:0.8,mode:'self',role:'s'};
+const opt={sound:true,vib:true,torch:false,motion:true,debug:false,bright:1,str:0.8,mode:'self',role:'s',skin:0.03};
 const MARK_MS=40000;
 const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
 const mix=(a,b,k)=>[a[0]+(b[0]-a[0])*k,a[1]+(b[1]-a[1])*k,a[2]+(b[2]-a[2])*k];
@@ -645,8 +647,8 @@ function readState(o){
 }
 
 // ---------------- the cup on the skin: place, pull, release ----------------
-const cupS={placed:false,via:'',s:0,since:0,motion:0,faceDown:false,touchHold:false,together:new Map(),pulseT:0,mark:null,partner:''};
-function onOrient(e){if(e.beta===null)return;cupS.faceDown=Math.abs(e.beta)>150;}
+const cupS={placed:false,via:'',s:0,since:0,motion:0,flatUp:false,bodyT:0,touchHold:false,together:new Map(),pulseT:0,mark:null,partner:''};
+function onOrient(e){if(e.beta===null)return;cupS.flatUp=Math.abs(e.beta)<35&&Math.abs(e.gamma)<35;}
 function onMotion(e){
   const a=e.acceleration;let m=0;
   if(a&&a.x!==null)m=Math.hypot(a.x,a.y,a.z);
@@ -663,12 +665,16 @@ async function enableMotion(){
   }catch(e){$('s-motion-note').textContent='Not available here: touch and hold the cup on screen instead.';return false;}
 }
 function cupStep(dt,now){
-  const want=opt.role!=='r'&&((opt.motion&&cupS.faceDown)||cupS.touchHold);
-  if(want&&!cupS.placed){cupS.placed=true;cupS.since=now;cupS.s=0;cupS.together=new Map();cupS.via=cupS.faceDown?'face-down':'touch';cupS.partner=opt.role==='g'?pairWith:'';audio.place();}
-  if(!want&&cupS.placed){release(now);}
+  // on the skin: screen up and flat, with the small tremor a hand or arm gives (a table is stiller); a lift jolts it off
+  const onBody=opt.motion&&cupS.flatUp&&cupS.motion<2.5&&(cupS.motion>=opt.skin||(cupS.placed&&cupS.via==='body'));
+  cupS.bodyT=onBody?cupS.bodyT+dt:0;
+  const want=opt.role!=='r'&&((cupS.placed&&cupS.via==='body')?onBody:(cupS.bodyT>1200||cupS.touchHold));
+  if(want&&!cupS.placed){cupS.placed=true;cupS.since=now;cupS.s=0;cupS.together=new Map();cupS.via=cupS.touchHold?'touch':'body';cupS.partner=opt.role==='g'?pairWith:'';audio.place();}
+  if(cupS.placed&&cupS.via==='touch'&&!cupS.touchHold)release(now);
+  else if(!want&&cupS.placed){release(now);}
   if(!cupS.placed)return;
   // the pull: stillness deepens it (about 20 s to full); movement loosens it
-  const still=cupS.via==='touch'||!opt.motion||cupS.motion<0.7;
+  const still=cupS.via==='touch'||!opt.motion||cupS.motion<0.6;
   const d=dt/1000;
   cupS.s=still?cupS.s+d*(1-cupS.s)/9:Math.max(0,cupS.s-d/2.5);
   // whom you hold with: everyone else whose cup is placed or pressed right now
@@ -804,8 +810,8 @@ function drawMark(x,y,R,mk,alpha){
 let syncK=0;
 // what you make together: one smooth rolling-circle line per person (a trail a few seconds long, fading at its tail).
 // In tune, every line takes the same shape and phase, so they settle onto one closed figure.
-function drawTraces(ring,now){
-  const lk=L.lake,st=centre.state||'',tune=st.startsWith('in tune'),circ=st.startsWith('circulating');
+function drawTraces(ring,now,lk,alpha){
+  lk=lk||L.lake;alpha=alpha||1;const st=centre.state||'',tune=st.startsWith('in tune'),circ=st.startsWith('circulating');
   syncK+=((tune?1:circ?0.3:0)-syncK)*0.03;
   const active=ring.filter(p=>p.st.p||p.st.l>0.15),n=Math.max(2,active.length);
   ctx.save();ctx.beginPath();ctx.arc(lk.x,lk.y,lk.R,0,2*Math.PI);ctx.clip();ctx.lineCap='round';ctx.lineJoin='round';
@@ -813,7 +819,7 @@ function drawTraces(ring,now){
     // the shared figure, faint and whole
     const r=1/n,d=0.75*r,s=lk.R*0.8,e=active[0].st.e||0;ctx.beginPath();
     for(let th=0;th<=2*Math.PI+0.01;th+=0.01){const x=(1-r)*Math.cos(th)+d*Math.cos((1-r)/r*th),y=(1-r)*Math.sin(th)-d*Math.sin((1-r)/r*th);th?ctx.lineTo(lk.x+x*s,lk.y+y*s):ctx.moveTo(lk.x+x*s,lk.y+y*s);}
-    ctx.strokeStyle=rgba(mix(ELRGB[e],[255,255,255],0.3),0.35*(syncK-0.55)/0.45);ctx.lineWidth=1.5;ctx.stroke();
+    ctx.strokeStyle=rgba(mix(ELRGB[e],[255,255,255],0.3),0.35*alpha*(syncK-0.55)/0.45);ctx.lineWidth=1.5;ctx.stroke();
   }
   ctx.globalCompositeOperation='lighter';ctx.lineCap='butt';
   active.forEach(p=>{
@@ -827,20 +833,14 @@ function drawTraces(ring,now){
       ctx.beginPath();let q=Q(a0);ctx.moveTo(lk.x+q[0]*s,lk.y+q[1]*s);
       for(let th=a0+step;th<a1;th+=step){q=Q(th);ctx.lineTo(lk.x+q[0]*s,lk.y+q[1]*s);}
       q=Q(a1);ctx.lineTo(lk.x+q[0]*s,lk.y+q[1]*s);
-      const k2=(c+1)/chunks;ctx.strokeStyle=rgba(ELRGB[e],(0.12+0.75*lvl)*k2*k2);ctx.lineWidth=1+2.2*lvl*k2;ctx.stroke();
+      const k2=(c+1)/chunks;ctx.strokeStyle=rgba(ELRGB[e],(0.12+0.75*lvl)*k2*k2*alpha);ctx.lineWidth=1+2.2*lvl*k2;ctx.stroke();
     }
   });
   ctx.restore();ctx.globalCompositeOperation='source-over';
 }
 function draw(now){
   const bright=opt.bright;
-  // FACE-DOWN: the whole screen is light on the skin, deepening with the pull, breathing with the group when together
-  if(cupS.placed&&cupS.via==='face-down'){
-    const tog=[...others()].some(([,m])=>m.st&&(m.st.p||m.st.l>0.15));
-    const br=tog?0.75+0.25*breathAt(Date.now()):0.85+0.15*Math.sin(now/900);
-    const c=mix(ELRGB[myEl],BRUISE,cupS.s*0.35);const k=(0.25+0.75*cupS.s)*br*bright;
-    ctx.fillStyle=rgba([c[0]*k,c[1]*k,c[2]*k],1);ctx.fillRect(0,0,W,H);return;
-  }
+  if(cupS.placed&&opt.role!=='r'){drawGlass(now);return;}
   ctx.fillStyle='#000';ctx.fillRect(0,0,W,H);
   const lk=L.lake,ring=circle();
   // the lake: water lit by the five direction lights of the group's centre
@@ -880,6 +880,45 @@ function draw(now){
   if(cupS.mark&&opt.role!=='r'){const age=Date.now()-cupS.mark.t;if(age<MARK_MS)drawMark(L.cup.x,L.cup.y,L.cup.R*1.45,cupS.mark,1);}
   if(!net.ok){ctx.fillStyle='#e7a27c';ctx.font='500 13px "IBM Plex Mono",monospace';ctx.textAlign='center';ctx.fillText('connecting to the group',W/2,H-24);}
 }
+// PLACED: the phone is a glass cup seen from above. The skin inside draws up into rings and reddens as it pulls;
+// your light ring sits at the rim, the others sit around it, the shared traces are drawn on the skin
+function drawGlass(now){
+  const bright=opt.bright,ring=circle(),s=cupS.s,t=Date.now();
+  const tog=others().some(([,m])=>m.st&&(m.st.p||m.st.l>0.15));
+  const br=tog?0.8+0.2*breathAt(t):0.9+0.1*Math.sin(now/1400);
+  const cx=W/2,cy=H*0.44,Rc=Math.min(W*0.43,H*0.3);
+  ctx.fillStyle='#000';ctx.fillRect(0,0,W,H);
+  // the skin
+  const base=[70,40,44],lift=mix(mix(base,[205,80,96],s),BRUISE,s*s*0.45),el=ELRGB[myEl];
+  const sk=ctx.createRadialGradient(cx,cy,0,cx,cy,Rc);
+  sk.addColorStop(0,rgba(mix(lift,el,0.12).map(v=>v*(0.55+0.45*br)*bright),1));sk.addColorStop(0.75,rgba(mix(base,lift,0.45).map(v=>v*0.8*bright),1));sk.addColorStop(1,rgba(base.map(v=>v*0.55*bright),1));
+  ctx.fillStyle=sk;ctx.beginPath();ctx.arc(cx,cy,Rc,0,2*Math.PI);ctx.fill();
+  // the skin rising: contour rings drawn in toward the centre as the pull deepens
+  ctx.save();ctx.beginPath();ctx.arc(cx,cy,Rc,0,2*Math.PI);ctx.clip();
+  for(let i=1;i<=7;i++){const f=i/8,r=Rc*f*(1-0.28*s*(1-f));ctx.beginPath();ctx.arc(cx,cy,r,0,2*Math.PI);
+    ctx.strokeStyle=rgba(mix([255,215,205],el,0.25),(0.05+0.22*s)*(1-f*0.5)*bright);ctx.lineWidth=1.2;ctx.stroke();}
+  ctx.restore();
+  drawTraces(ring,t,{x:cx,y:cy,R:Rc*0.92},0.8);
+  // the glass rim
+  ctx.beginPath();ctx.arc(cx,cy,Rc,0,2*Math.PI);ctx.strokeStyle='rgba(235,240,238,0.4)';ctx.lineWidth=3;ctx.stroke();
+  ctx.beginPath();ctx.arc(cx,cy,Rc*0.965,-Math.PI*0.85,-Math.PI*0.55);ctx.strokeStyle='rgba(255,255,255,0.35)';ctx.lineWidth=2;ctx.stroke();
+  // your cup's light ring (firmware), just outside the rim
+  for(let i=0;i<12;i++){const c=cup.ring[i];if(!(c[0]+c[1]+c[2]))continue;const a0=(15+30*i-14)*Math.PI/180-Math.PI/2,a1=(15+30*i+14)*Math.PI/180-Math.PI/2;
+    ctx.beginPath();ctx.arc(cx,cy,Rc*1.07,a0,a1);ctx.strokeStyle=rgba(ledRGB(c,bright),1);ctx.lineWidth=Rc*0.07;ctx.stroke();}
+  // someone arrives: the rim lights in their colour for a moment
+  if(cup.flash){const age=host.now-cup.flash[1];if(age<1400){ctx.beginPath();ctx.arc(cx,cy,Rc*1.0,0,2*Math.PI);ctx.strokeStyle=rgba(ELRGB[cup.flash[0]],0.8*(1-age/1400));ctx.lineWidth=10;ctx.stroke();}}
+  // the others around the cup: their colour and how deep their pull is
+  ring.forEach(p=>{if(p.id===ME)return;const st=p.st,a=p.a,x=cx+Math.cos(a)*Rc*1.3,y=cy+Math.sin(a)*Rc*1.3,r=Rc*0.11,col=ELRGB[st.e||0];
+    if(st.mk)drawMark(x,y,r*2.4,st.mk,1);
+    ctx.beginPath();ctx.arc(x,y,r,0,2*Math.PI);ctx.fillStyle='rgba(16,18,18,0.9)';ctx.fill();ctx.strokeStyle=rgba(col,0.8);ctx.lineWidth=2;ctx.stroke();
+    const lv=st.p?st.s:(st.l||0);if(lv>0.01){ctx.beginPath();ctx.arc(x,y,r*0.8,-Math.PI/2,-Math.PI/2+2*Math.PI*lv);ctx.strokeStyle=rgba(col,0.95);ctx.lineWidth=r*0.3;ctx.stroke();}
+    ctx.fillStyle='#c9cfcb';ctx.font='500 11.5px "IBM Plex Sans",sans-serif';ctx.textAlign='center';ctx.textBaseline='top';ctx.fillText('seat '+p.seat,x,y+r+4);});
+  // words
+  const cap=caption();ctx.textAlign='center';ctx.textBaseline='alphabetic';
+  ctx.fillStyle='#ecefec';ctx.font='400 '+Math.round(Math.min(22,W*0.055))+'px "Gowun Batang",Georgia,serif';wrapText(cap[0],W/2,cy+Rc*1.55+10,W*0.86,27);
+  ctx.fillStyle='#9aa29e';ctx.font='400 13.5px "IBM Plex Sans",sans-serif';wrapText(cap[1],W/2,cy+Rc*1.55+38,W*0.86,19);
+  ctx.fillStyle='#7d8580';ctx.font='500 12px "IBM Plex Mono",monospace';ctx.fillText('pull '+Math.round(s*100)+'%  ·  lift the phone to release',W/2,H-Math.max(22,H*0.035));
+}
 function wrapText(t,x,y,maxW,lh){const words=t.split(' ');let line='',yy=y;for(const w of words){const test=line?line+' '+w:w;if(ctx.measureText(test).width>maxW&&line){ctx.fillText(line,x,yy);line=w;yy+=lh;}else line=test;}if(line)ctx.fillText(line,x,yy);}
 function drawCup(now){
   const {x,y,R}=L.cup;
@@ -916,8 +955,8 @@ function caption(){
   }
   if(cupS.mark&&Date.now()-cupS.mark.t<MARK_MS)return ['Your mark.',cupS.mark.who?'Made with '+cupS.mark.who+(cupS.mark.who===1?' other cup. ':' other cups. ')+'It fades in 40 s.':'You held alone this time. It fades in 40 s.'];
   if(cupS.placed)return [cupS.s<0.4?'Hold still. The pull is building.':'Deep now. Breathe with the others.',moment(st)];
-  if(opt.role==='g'&&!pairWith)return ['Choose who you will cup.','Then lay your phone face-down on their palm or forearm.'];
-  return [opt.motion?'Lay the phone face-down on '+(opt.role==='g'?'their':'your')+' skin.':'Touch and hold the cup to place it.',moment(st)||'Tap a pad first to choose your element.'];
+  if(opt.role==='g'&&!pairWith)return ['Choose who you will cup.','Then lay your phone screen-up on their palm or forearm.'];
+  return [opt.motion?'Lay the phone screen-up on '+(opt.role==='g'?'their':'your')+' palm, forearm or thigh.':'Touch and hold the cup to place it.',moment(st)||'Tap a pad first to choose your element.'];
 }
 function moment(st){
   if(st.startsWith('in tune'))return 'In tune: everyone holds '+EL_NAME[ELEMENTS.findIndex(e=>st.includes(e[0]))]+'. The traces become one figure.';
@@ -939,7 +978,7 @@ function frame(t){
   if(now-beatT>2000){net.beat();beatT=now;}
   if(now-seatT>400){updateSeats();renderPairs();seatT=now;}
   shareState(t);outputs(now);draw(t);
-  if(opt.debug)$('debug').textContent=(host.line||'centre: starting')+'\nrelay '+(net.ok?'connected':'connecting')+' · sent '+net.sent+' · heard '+net.got+'\ncup '+(cupS.placed?'placed ('+cupS.via+') pull '+Math.round(cupS.s*100)+'%':'not placed')+' · motion '+cupS.motion.toFixed(2)+(cupS.faceDown?' · face-down':'');
+  if(opt.debug)$('debug').textContent=(host.line||'centre: starting')+'\nrelay '+(net.ok?'connected':'connecting')+' · sent '+net.sent+' · heard '+net.got+'\ncup '+(cupS.placed?'placed ('+cupS.via+') pull '+Math.round(cupS.s*100)+'%':'not placed')+' · tremor '+cupS.motion.toFixed(3)+(cupS.flatUp?' · flat, screen up':' · not flat');
   requestAnimationFrame(frame);
 }
 function outputs(now){
@@ -955,7 +994,7 @@ function outputs(now){
   }
   if(cup.flash&&cup.flash!==prev.flash){prev.flash=cup.flash;audio.bell(cup.flash[0],0.8);if(opt.vib&&canVibrate&&pulling<0){try{navigator.vibrate(60);}catch(e){}}}
   const tn=cup.tune===undefined?null:cup.tune;if(tn!==prev.tune){prev.tune=tn;audio.tune(tn);}
-  // the flame: the flashlight on the cup's back glows during the shared in-breath once the pull is deep
+  // the warmth: the flashlight on the phone's back shines into the skin during the shared in-breath once the pull is deep
   if(opt.torch){const deep=cupS.placed&&cupS.s>0.5&&breathAt(now)>0.5;torch.set(deep,now);}
 }
 
@@ -994,11 +1033,12 @@ $('s-close').addEventListener('click',()=>$('settings').hidden=true);
 $('settings').addEventListener('click',e=>{if(e.target.id==='settings')$('settings').hidden=true;});
 $('s-bright').addEventListener('input',e=>{opt.bright=+e.target.value;$('s-bright-o').textContent=Math.round(opt.bright*100)+'%';});
 $('s-str').addEventListener('input',e=>{opt.str=+e.target.value;$('s-str-o').textContent=opt.str.toFixed(2);});
+$('s-skin').addEventListener('input',e=>{opt.skin=+e.target.value;$('s-skin-o').textContent=opt.skin.toFixed(3);});
 $('s-debug').addEventListener('change',e=>{opt.debug=e.target.checked;$('debug').hidden=!opt.debug;});
 $('s-sound').addEventListener('change',e=>{opt.sound=e.target.checked;audio.resume();if(!opt.sound)audio.tune(null);});
 $('s-vib').addEventListener('change',e=>opt.vib=e.target.checked);
 $('s-torch').addEventListener('change',async e=>{if(e.target.checked){opt.torch=await torch.init();e.target.checked=opt.torch;}else{opt.torch=false;torch.stop();}});
-$('s-motion').addEventListener('change',async e=>{if(e.target.checked){opt.motion=await enableMotion();e.target.checked=opt.motion;}else{opt.motion=false;window.removeEventListener('deviceorientation',onOrient);window.removeEventListener('devicemotion',onMotion);cupS.faceDown=false;}});
+$('s-motion').addEventListener('change',async e=>{if(e.target.checked){opt.motion=await enableMotion();e.target.checked=opt.motion;}else{opt.motion=false;window.removeEventListener('deviceorientation',onOrient);window.removeEventListener('devicemotion',onMotion);cupS.flatUp=false;}});
 $('s-leave').addEventListener('click',()=>{running=false;net.stop();torch.stop();audio.tune(null);audio.pullTo(0,0,false);members.clear();pointers.clear();cupS.placed=false;cupS.touchHold=false;
   $('settings').hidden=true;$('bar').hidden=true;$('pairs').hidden=true;$('debug').hidden=true;$('start').hidden=false;$('go').disabled=false;$('go').textContent='Start';ctx.clearRect(0,0,W,H);});
 window.addEventListener('pagehide',()=>net.stop());
