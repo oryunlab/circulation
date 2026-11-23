@@ -5,13 +5,13 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
 <meta name="theme-color" content="#0b0c0c">
 <title>Circulation Cup</title>
-<meta name="description" content="Your phone becomes a cupping cup. Press together with others and your lights answer each other.">
+<meta name="description" content="Your phone becomes a cupping cup. Place it on the skin, hold still, release, and keep the mark you made together for a moment.">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Gowun+Batang:wght@400;700&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
 <style>
-/* Layout: one dark screen that is itself the light. Start sheet first; then the cup fills the screen with a thin bar on top. */
+/* Layout: one dark screen. Top: the shared lake with everyone around it. Bottom: your cup and what to do next. Face-down: the whole screen is light on the skin. */
 :root{
   color-scheme:dark;
-  --bg:#0b0c0c; --fg:#ecefec; --muted:#9aa29e; --line:#2c3130; --panel:#151817; --accent:#a9c9b6; --warn:#e7a27c;
+  --bg:#0b0c0c; --fg:#ecefec; --muted:#9aa29e; --line:#2c3130; --panel:#151817; --accent:#a9c9b6; --warn:#e7a27c; --bruise:#8e2f62;
   --display:"Gowun Batang", Georgia, serif; --body:"IBM Plex Sans", "Helvetica Neue", Arial, sans-serif; --mono:"IBM Plex Mono", ui-monospace, Menlo, monospace;
 }
 *{box-sizing:border-box}
@@ -20,20 +20,24 @@ html,body{height:100%;margin:0;background:var(--bg);color:var(--fg);font:15px/1.
 button,input,select{font:inherit;color:inherit}
 button:focus-visible,input:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
 #cv{position:fixed;inset:0;width:100%;height:100%;display:block;touch-action:none;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none}
-/* start sheet */
-#start{position:fixed;inset:0;overflow-y:auto;display:flex;justify-content:center;padding-block:max(28px,env(safe-area-inset-top)) max(28px,env(safe-area-inset-bottom));padding-left:max(18px,env(safe-area-inset-left));padding-right:max(18px,env(safe-area-inset-right));background:radial-gradient(120% 70% at 50% 0%,#1d1730 0%,var(--bg) 60%)}
+#start{position:fixed;inset:0;overflow-y:auto;display:flex;justify-content:center;padding-block:max(28px,env(safe-area-inset-top)) max(28px,env(safe-area-inset-bottom));padding-left:max(18px,env(safe-area-inset-left));padding-right:max(18px,env(safe-area-inset-right));background:radial-gradient(120% 70% at 50% 0%,#2a1424 0%,var(--bg) 62%)}
 .sheet{width:100%;max-width:440px;display:flex;flex-direction:column;gap:18px}
-h1{font:700 34px/1.1 var(--display);margin:8px 0 0;letter-spacing:.01em}
+h1{font:700 34px/1.1 var(--display);margin:8px 0 0}
 .lede{margin:0;color:#c9cfcb}
 .label{font:600 11px var(--body);letter-spacing:.09em;text-transform:uppercase;color:var(--muted)}
 .field{display:flex;flex-direction:column;gap:8px}
-.groups{display:flex;flex-wrap:wrap;gap:6px}
-.groups button{padding:8px 12px;border-radius:999px;border:1px solid var(--line);background:var(--panel);cursor:pointer;font-size:14px}
-.groups button[aria-pressed="true"]{background:var(--fg);color:var(--bg);border-color:var(--fg)}
-.groups button small{color:var(--muted);margin-left:4px}
-.groups button[aria-pressed="true"] small{color:#555}
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.chips button{padding:8px 12px;border-radius:999px;border:1px solid var(--line);background:var(--panel);cursor:pointer;font-size:14px}
+.chips button[aria-pressed="true"]{background:var(--fg);color:var(--bg);border-color:var(--fg)}
+.chips button small{color:var(--muted);margin-left:4px}
+.chips button[aria-pressed="true"] small{color:#555}
+.cards{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.cards button{text-align:left;padding:12px;border-radius:12px;border:1px solid var(--line);background:var(--panel);cursor:pointer}
+.cards button b{display:block;font-weight:600;margin-bottom:3px}
+.cards button span{font-size:12.5px;color:var(--muted)}
+.cards button[aria-pressed="true"]{border-color:var(--fg);box-shadow:inset 0 0 0 1px var(--fg)}
 input[type=text]{width:100%;padding:11px 12px;border-radius:10px;border:1px solid var(--line);background:var(--panel);font:500 16px var(--mono)}
-.opts{display:flex;flex-direction:column;gap:2px}
+.opts{display:flex;flex-direction:column}
 .opt{display:grid;grid-template-columns:auto 1fr;gap:4px 10px;align-items:start;padding:9px 0;border-bottom:1px solid var(--line)}
 .opt input{margin-top:3px;width:18px;height:18px;accent-color:var(--accent)}
 .opt b{font-weight:500}
@@ -41,15 +45,15 @@ input[type=text]{width:100%;padding:11px 12px;border-radius:10px;border:1px soli
 .go{padding:15px;border-radius:14px;border:0;background:var(--fg);color:var(--bg);font:600 17px var(--body);cursor:pointer}
 .go:disabled{opacity:.5}
 .small{font-size:12.5px;color:var(--muted);margin:0}
-/* cup screen */
-#bar{position:fixed;left:0;right:0;top:0;display:flex;align-items:center;justify-content:space-between;gap:8px;padding-top:max(10px,env(safe-area-inset-top));padding-left:max(14px,env(safe-area-inset-left));padding-right:max(14px,env(safe-area-inset-right));padding-bottom:8px;transition:opacity .6s;pointer-events:none}
+#bar{position:fixed;left:0;right:0;top:0;display:flex;align-items:center;justify-content:space-between;gap:8px;padding-top:max(10px,env(safe-area-inset-top));padding-left:max(14px,env(safe-area-inset-left));padding-right:max(14px,env(safe-area-inset-right));padding-bottom:8px;pointer-events:none}
 #bar>*{pointer-events:auto}
-#bar .who{font:500 13px var(--body);color:#dfe3e0;text-shadow:0 1px 3px #000}
+#bar .who{font:500 13px var(--body);color:#dfe3e0}
 #bar .who small{display:block;color:#aab1ad;font-size:12px}
-.pill{padding:7px 12px;border-radius:999px;border:1px solid rgba(255,255,255,.18);background:rgba(10,12,12,.55);font:500 13px var(--body);cursor:pointer;backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px)}
-#bar.dim{opacity:.18}
-#debug{position:fixed;left:max(10px,env(safe-area-inset-left));right:max(10px,env(safe-area-inset-right));bottom:max(10px,env(safe-area-inset-bottom));font:11.5px/1.4 var(--mono);color:#cfd5d1;background:rgba(10,12,12,.6);border-radius:8px;padding:6px 9px;pointer-events:none;white-space:pre-wrap}
-/* settings */
+.pill{padding:7px 12px;border-radius:999px;border:1px solid rgba(255,255,255,.18);background:rgba(10,12,12,.6);font:500 13px var(--body);cursor:pointer}
+#pairs{position:fixed;left:0;right:0;display:flex;flex-wrap:wrap;justify-content:center;gap:6px;padding-left:max(14px,env(safe-area-inset-left));padding-right:max(14px,env(safe-area-inset-right))}
+#pairs button{padding:7px 12px;border-radius:999px;border:1px solid rgba(255,255,255,.25);background:rgba(10,12,12,.7);font:500 13px var(--body);cursor:pointer}
+#pairs button[aria-pressed="true"]{background:var(--fg);color:var(--bg)}
+#debug{position:fixed;left:max(10px,env(safe-area-inset-left));right:max(10px,env(safe-area-inset-right));bottom:max(10px,env(safe-area-inset-bottom));font:11.5px/1.4 var(--mono);color:#cfd5d1;background:rgba(10,12,12,.7);border-radius:8px;padding:6px 9px;pointer-events:none;white-space:pre-wrap}
 #settings{position:fixed;inset:0;background:rgba(0,0,0,.55);display:flex;align-items:flex-end;justify-content:center}
 #settings .sheet{background:var(--panel);border-radius:18px 18px 0 0;padding:18px max(18px,env(safe-area-inset-left)) max(22px,env(safe-area-inset-bottom)) max(18px,env(safe-area-inset-right));max-height:88vh;overflow-y:auto;gap:12px}
 .row{display:flex;justify-content:space-between;align-items:center;gap:10px}
@@ -58,17 +62,16 @@ input[type=range]{width:100%;accent-color:var(--accent)}
 #qr img,#qr canvas{display:block;width:180px;height:180px}
 .link{font:12.5px var(--mono);color:#c9cfcb;word-break:break-all;margin:0;text-align:center}
 .status{font:12.5px var(--mono);color:var(--muted)}
-.warn{color:var(--warn)}
 @media (prefers-reduced-motion:reduce){*{transition:none!important}}
 </style>
 </head>
 <body>
-<canvas id="cv" aria-label="Your cup: the light ring and five pads, seen from above. The top of the screen faces the lake."></canvas>
-
+<canvas id="cv" aria-label="The shared lake with everyone around it, and your cup"></canvas>
 <div id="bar" hidden>
   <div class="who"><span id="b-group">group</span><small id="b-seat">joining</small></div>
   <button class="pill" id="b-set">Settings</button>
 </div>
+<div id="pairs" hidden></div>
 <div id="debug" hidden></div>
 
 <div id="start">
@@ -77,23 +80,34 @@ input[type=range]{width:100%;accent-color:var(--accent)}
       <div class="label">Circulation · RMIT Vietnam</div>
       <h1>Your phone is a cup</h1>
     </div>
-    <p class="lede">Five pads, one for each element: Wood, Fire, Earth, Metal, Water. Press together with others in your group and your lights answer each other. When everyone holds the same element, the phones breathe as one.</p>
+    <p class="lede">Lay it face-down on the skin. Stay still and the pull deepens. Lift it and the mark appears, made of everyone you held with. It fades, as a cupping mark does.</p>
+    <div class="field">
+      <span class="label">How</span>
+      <div class="cards" id="modes" role="group" aria-label="How to cup">
+        <button data-m="self" aria-pressed="true"><b>On my own</b><span>Your phone on your own palm or forearm.</span></button>
+        <button data-m="pair" aria-pressed="false"><b>In pairs</b><span>One person cups the other, as in a session.</span></button>
+      </div>
+      <div class="cards" id="roles" role="group" aria-label="Your role" hidden>
+        <button data-r="g" aria-pressed="true"><b>I give</b><span>I place my phone on my partner's skin.</span></button>
+        <button data-r="r" aria-pressed="false"><b>I receive</b><span>My phone stays face-up beside me. I feel and see the cup.</span></button>
+      </div>
+    </div>
     <div class="field">
       <label class="label" for="g">Group</label>
-      <div class="groups" id="groups" role="group" aria-label="Pick a group"></div>
-      <input id="g" type="text" inputmode="latin" autocomplete="off" autocapitalize="off" spellcheck="false" maxlength="24" placeholder="or type a group name">
+      <div class="chips" id="groups" role="group" aria-label="Pick a group"></div>
+      <input id="g" type="text" autocomplete="off" autocapitalize="off" spellcheck="false" maxlength="24" placeholder="or type a group name">
     </div>
     <div class="field">
       <span class="label">Use on this phone</span>
       <div class="opts">
-        <label class="opt"><input type="checkbox" id="o-sound" checked><b>Sound</b><span>The five tones (placeholders until the final sounds are ready).</span></label>
-        <label class="opt"><input type="checkbox" id="o-vib" checked><b>Vibration</b><span>A buzz when someone's light arrives. Android only.</span></label>
-        <label class="opt"><input type="checkbox" id="o-torch"><b>Flashlight</b><span>Slow blinks for arrivals and in tune. Asks for the camera, which is only used to switch the light on and off. Nothing is recorded.</span></label>
-        <label class="opt"><input type="checkbox" id="o-motion" checked><b>Face-down hold</b><span>Lay the phone face-down on your palm to hold your last element, like a cup resting on the skin.</span></label>
+        <label class="opt"><input type="checkbox" id="o-motion" checked><b>Face-down sensing</b><span>Knows when the cup is placed and how still you hold it. Without it, touch and hold the cup on screen to place it.</span></label>
+        <label class="opt"><input type="checkbox" id="o-sound" checked><b>Sound</b><span>The pull, the release, the five tones (placeholders).</span></label>
+        <label class="opt"><input type="checkbox" id="o-vib" checked><b>Vibration</b><span>You feel the pull. Android only.</span></label>
+        <label class="opt"><input type="checkbox" id="o-torch"><b>Flashlight</b><span>While a cup pulls deep, the light on its back glows up to the ceiling, like the flame in fire cupping. Asks for the camera, used only to switch the light. Nothing is recorded.</span></label>
       </div>
     </div>
     <button class="go" id="go">Start</button>
-    <p class="small">Nothing is stored or recorded. While this page is open, only your pad presses travel, to the phones in your group, through a public relay. Avoid this if bright light changes trouble you; flashes are kept slower than once a second.</p>
+    <p class="small">Nothing is stored or recorded. While this page is open, only your cup's state travels to the phones in your group, through a public relay. Not for use as a treatment. Light changes are kept slower than once a second.</p>
   </div>
 </div>
 
@@ -102,15 +116,13 @@ input[type=range]{width:100%;accent-color:var(--accent)}
     <div class="row"><span class="label">Settings</span><button class="pill" id="s-close">Done</button></div>
     <div class="row"><label for="s-bright">Brightness</label><output id="s-bright-o" class="status">100%</output></div>
     <input id="s-bright" type="range" min="0.2" max="1" step="0.05" value="1">
-    <div class="row"><label for="s-str">Press strength</label><output id="s-str-o" class="status">0.80</output></div>
+    <div class="row"><label for="s-str">Press strength (pads)</label><output id="s-str-o" class="status">0.80</output></div>
     <input id="s-str" type="range" min="0.2" max="1" step="0.05" value="0.8">
-    <label class="opt"><input type="checkbox" id="s-size"><b>Finger size as pressure</b><span>A wider touch counts as a firmer press, where the phone reports it (most Android phones).</span></label>
-    <label class="opt"><input type="checkbox" id="s-lightonly"><b>Light only</b><span>Hide the pads and fill the screen with light, for phones laid face-up in a circle around a bowl of water. Touch anywhere to hold your last element.</span></label>
     <label class="opt"><input type="checkbox" id="s-sound"><b>Sound</b><span></span></label>
     <label class="opt"><input type="checkbox" id="s-vib"><b>Vibration</b><span id="s-vib-note"></span></label>
     <label class="opt"><input type="checkbox" id="s-torch"><b>Flashlight</b><span id="s-torch-note"></span></label>
-    <label class="opt"><input type="checkbox" id="s-motion"><b>Face-down hold</b><span id="s-motion-note"></span></label>
-    <label class="opt"><input type="checkbox" id="s-debug"><b>Show the firmware state</b><span>The centre's serial line and the relay, for testing.</span></label>
+    <label class="opt"><input type="checkbox" id="s-motion"><b>Face-down sensing</b><span id="s-motion-note"></span></label>
+    <label class="opt"><input type="checkbox" id="s-debug"><b>Show the firmware state</b><span>For testing.</span></label>
     <span class="label">Invite to this group</span>
     <div id="qr"></div>
     <p class="link" id="s-link"></p>
@@ -550,53 +562,56 @@ window.CircSimCore={Sim,Cup,Centre,recv,ELEMENTS,EL_NAME,IDLE_COLOR,C,K};
 <script>
 (function(){
 'use strict';
-const {Cup,Centre,recv,ELEMENTS,EL_NAME,C,K}=window.CircSimCore;
-K.STARTUP_CHECK=false;   // no light check on a phone: the group's centre starts at once
+const {Cup,Centre,ELEMENTS,EL_NAME,C,K}=window.CircSimCore;
+K.STARTUP_CHECK=false;
 const $=id=>document.getElementById(id);
-const ELCSS=['#19c95a','#ef3b22','#efb21a','#e8ebe6','#2b63ff'];
+const ELRGB=[[25,201,90],[239,59,34],[239,178,26],[232,235,230],[43,99,255]];
+const ELCSS=ELRGB.map(c=>'rgb('+c.join(',')+')');
+const BRUISE=[142,47,98];
 const GROUPS=[['well','井'],['spring','滎'],['stream','輸'],['river','經'],['hap','合']];
 const ME=Math.random().toString(36).slice(2,10);
-const opt={sound:true,vib:true,torch:false,motion:true,size:false,lightOnly:false,debug:false,bright:1,str:0.8};
+const opt={sound:true,vib:true,torch:false,motion:true,debug:false,bright:1,str:0.8,mode:'self',role:'s'};
+const MARK_MS=40000;
+const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
+const mix=(a,b,k)=>[a[0]+(b[0]-a[0])*k,a[1]+(b[1]-a[1])*k,a[2]+(b[2]-a[2])*k];
+const rgba=(c,a)=>'rgba('+Math.round(c[0])+','+Math.round(c[1])+','+Math.round(c[2])+','+a.toFixed(3)+')';
+// the shared breath: phone clocks agree to a fraction of a second, so every phone breathes on the same 10 s
+const breathAt=t=>(1-Math.cos(2*Math.PI*((t%10000)/10000)))/2;
 
-// ---------------- firmware on this phone ----------------
-// One cup (this phone) and one centre (the group's lake, computed here from everyone's presses).
+// ---------------- firmware (cup v5.1 + the group's centre v5) ----------------
 const host={now:0,peak:0,print(s){host.line=s;},note(){},line:''};
 let cup,centre;
 host.bus={send(from,msg){
-  if(from===cup){
-    if(msg[0]==='C'){centre.inbox.push({at:host.now,msg});net.send('C'+msg.slice(msg.indexOf(',')));}
-    else if(msg[0]==='R'){net.send('R'+msg.slice(msg.indexOf(',')));}
-  }else if(from===centre){cup.inbox.push({at:host.now,msg});}
+  if(from===cup){if(msg[0]==='C'){centre.inbox.push({at:host.now,msg});net.send('C'+msg.slice(msg.indexOf(',')));}}
+  else if(from===centre){cup.inbox.push({at:host.now,msg});}
 }};
-function makeFirmware(){
-  cup=new Cup(host,1);centre=new Centre(host);centre.configure(1);
-  cup.boot(host.now);centre.boot(host.now);
-}
+function makeFirmware(){cup=new Cup(host,1);centre=new Centre(host);centre.configure(1);cup.boot(host.now);centre.boot(host.now);}
 
-// ---------------- the group: members and seats ----------------
-const members=new Map();   // id -> {t: join time, last: heard at}
-let joinT=0,seats=1,myId=1;
+// ---------------- the group ----------------
+const members=new Map();   // id -> {t, last, st}
+let joinT=0,seats=1,myId=1,myEl=0,elChosen=false;
 function roster(){
   const now=Date.now(),list=[[ME,joinT]];
   for(const [id,m] of members)if(now-m.last<7000&&m.t)list.push([id,m.t]);
-  list.sort((a,b)=>a[1]-b[1]||(a[0]<b[0]?-1:1));
-  return list.map(x=>x[0]);
+  list.sort((a,b)=>a[1]-b[1]||(a[0]<b[0]?-1:1));return list.map(x=>x[0]);
 }
-function cupIdOf(id){const r=roster(),i=r.indexOf(id);return i<0?0:(i<5?i+1:Math.min(15,6+i-5));}
+function cupIdOf(id){const r=roster(),i=r.indexOf(id);return i<0?0:(i<5?i+1:Math.min(15,i+1));}
 function updateSeats(){
   const r=roster(),n=Math.min(5,r.length),mine=cupIdOf(ME);
   if(n!==seats){seats=n;centre.configure(n);centre.boot(host.now);}
   if(mine!==myId){myId=mine;cup.id=mine;cup.name='cup '+mine;}
-  $('b-seat').textContent=r.length===1?'alone so far · '+r.length+' phone':(myId<=5?'seat '+myId+' of '+n:'watching (the table is full)')+' · '+r.length+' phones';
+  if(!elChosen)myEl=(myId-1)%5;    // a different element for each seat until you choose one
+  const role=opt.role==='g'?'giving':opt.role==='r'?'receiving':'on my own';
+  $('b-seat').textContent=(myId<=5?'seat '+myId:'watching')+' · '+role+' · '+r.length+(r.length===1?' phone':' phones');
 }
+function others(){const now=Date.now(),o=[];for(const [id,m] of members)if(now-m.last<7000&&m.t)o.push([id,m]);return o;}
 
-// ---------------- relay (MQTT over secure websockets, public brokers) ----------------
+// ---------------- relay ----------------
 const BROKERS=['wss://broker.emqx.io:8084/mqtt','wss://broker.hivemq.com:8884/mqtt'];
 const net={client:null,base:'',ok:false,broker:0,sent:0,got:0,
   start(group){
-    this.base='circulation-cup/v1/'+group;
-    const will={topic:this.base+'/p/'+ME,payload:'',retain:true,qos:0};
-    const c=mqtt.connect(BROKERS[this.broker],{clientId:'circ_'+ME+'_'+this.broker,clean:true,will,reconnectPeriod:2500,connectTimeout:8000,keepalive:20});
+    this.base='circulation-cup/v2/'+group;
+    const c=mqtt.connect(BROKERS[this.broker],{clientId:'circ_'+ME+'_'+this.broker,clean:true,will:{topic:this.base+'/p/'+ME,payload:'',retain:true,qos:0},reconnectPeriod:2500,connectTimeout:8000,keepalive:20});
     this.client=c;
     const fail=setTimeout(()=>{if(!this.ok&&this.broker+1<BROKERS.length){c.end(true);this.broker++;this.start(group);}},9000);
     c.on('connect',()=>{this.ok=true;clearTimeout(fail);c.subscribe(this.base+'/#');c.publish(this.base+'/p/'+ME,JSON.stringify({t:joinT}),{retain:true});});
@@ -605,13 +620,12 @@ const net={client:null,base:'',ok:false,broker:0,sent:0,got:0,
       const parts=topic.slice(this.base.length+1).split('/'),kind=parts[0],id=parts[1];
       if(!id||id===ME||!/^[a-z0-9]{4,12}$/.test(id))return;
       const s=payload.toString();
-      if(kind==='p'){if(!s){members.delete(id);return;}try{const t=+JSON.parse(s).t;if(Number.isFinite(t))members.set(id,{t,last:Date.now()});}catch(e){}return;}
-      const m=members.get(id)||{t:0,last:0};m.last=Date.now();members.set(id,m);
+      if(kind==='p'){if(!s){members.delete(id);return;}try{const t=+JSON.parse(s).t;if(Number.isFinite(t)){const m=members.get(id)||{st:{}};m.t=t;m.last=Date.now();members.set(id,m);}}catch(e){}return;}
+      const m=members.get(id)||{t:0,last:0,st:{}};m.last=Date.now();members.set(id,m);
       if(kind==='h'){if(!m.t){const t=+s;if(Number.isFinite(t))m.t=t;}return;}
       if(kind==='m'){this.got++;
-        const cid=cupIdOf(id);if(!cid)return;
-        if(/^C(,\d{1,3}){5}$/.test(s)){if(cid<=5)centre.inbox.push({at:host.now+2,msg:'C'+cid+s.slice(1)});}
-        else if(/^R,\d{1,5}$/.test(s)){cup.inbox.push({at:host.now+2,msg:'R'+cid+s.slice(1)});}
+        if(/^C(,\d{1,3}){5}$/.test(s)){const cid=cupIdOf(id);if(cid>=1&&cid<=5)centre.inbox.push({at:host.now+2,msg:'C'+cid+s.slice(1)});}
+        else if(s[0]==='S'){try{m.st=readState(JSON.parse(s.slice(1)));}catch(e){}}
       }
     });
   },
@@ -619,75 +633,138 @@ const net={client:null,base:'',ok:false,broker:0,sent:0,got:0,
   beat(){if(this.ok)this.client.publish(this.base+'/h/'+ME,String(joinT));},
   stop(){if(this.client){try{this.client.publish(this.base+'/p/'+ME,'',{retain:true});this.client.end(false);}catch(e){}}this.client=null;this.ok=false;}
 };
+// another phone's cup, checked field by field (what arrives is untrusted)
+function readState(o){
+  const st={};
+  st.e=Number.isInteger(o.e)&&o.e>=0&&o.e<5?o.e:0;
+  st.p=o.p===1;st.s=clamp(+o.s||0,0,100)/100;st.l=clamp(+o.l||0,0,100)/100;
+  st.r=['s','g','r'].includes(o.r)?o.r:'s';
+  st.pt=typeof o.pt==='string'&&/^[a-z0-9]{4,12}$/.test(o.pt)?o.pt:'';
+  if(o.mk&&Array.isArray(o.mk.L)){st.mk={t:Date.now()-clamp(+o.mk.a||0,0,MARK_MS),d:clamp(+o.mk.d||0,0,1),L:o.mk.L.filter(x=>Array.isArray(x)&&Number.isInteger(x[0])&&x[0]>=0&&x[0]<5).slice(0,5).map(x=>[x[0],clamp(+x[1]||0,0,1)])};}
+  return st;
+}
 
-// ---------------- input: pads, finger size, face-down ----------------
-const pointers=new Map();let lastEl=2,faceDown=false;
-function padTargets(){
-  const t=[0,0,0,0,0];
-  for(const p of pointers.values())t[p.pad]=Math.max(t[p.pad],p.level);
-  if(opt.motion&&faceDown)t[lastEl]=Math.max(t[lastEl],0.7);
-  return t;
+// ---------------- the cup on the skin: place, pull, release ----------------
+const cupS={placed:false,via:'',s:0,since:0,motion:0,faceDown:false,touchHold:false,together:new Map(),pulseT:0,mark:null,partner:''};
+function onOrient(e){if(e.beta===null)return;cupS.faceDown=Math.abs(e.beta)>150;}
+function onMotion(e){
+  const a=e.acceleration;let m=0;
+  if(a&&a.x!==null)m=Math.hypot(a.x,a.y,a.z);
+  else if(e.accelerationIncludingGravity){const g=e.accelerationIncludingGravity;m=Math.abs(Math.hypot(g.x,g.y,g.z)-9.81);}
+  cupS.motion=cupS.motion*0.85+m*0.15;
 }
-function levelFrom(e){
-  if(e.pointerType==='pen'&&e.pressure>0)return e.pressure;
-  if(opt.size&&e.pointerType==='touch'&&e.width>1){return Math.max(0.25,Math.min(1,0.25+(Math.max(e.width,e.height)-12)/30));}
-  return opt.str;
-}
-let layout={cx:0,cy:0,R:1,pads:[]};
-const PAD_AZ=[-100,-45,0,45,100],PAD_R=[0.6,0.47,0.6,0.47,0.6];
-function hitPad(x,y){
-  if(opt.lightOnly)return lastEl;
-  let best=-1,bd=1e9;
-  layout.pads.forEach((p,i)=>{const d=Math.hypot(x-p.x,y-p.y);if(d<bd){bd=d;best=i;}});
-  return bd<=layout.R*0.3?best:-1;
-}
-const cv=$('cv');
-cv.addEventListener('pointerdown',e=>{
-  if(!running)return;e.preventDefault();wakeBar();
-  const r=cv.getBoundingClientRect(),pad=hitPad(e.clientX-r.left,e.clientY-r.top);if(pad<0)return;
-  cv.setPointerCapture(e.pointerId);pointers.set(e.pointerId,{pad,level:levelFrom(e)});lastEl=pad;
-});
-cv.addEventListener('pointermove',e=>{const p=pointers.get(e.pointerId);if(p&&opt.size)p.level=levelFrom(e);});
-['pointerup','pointercancel','lostpointercapture'].forEach(ev=>cv.addEventListener(ev,e=>pointers.delete(e.pointerId)));
-function onOrient(e){if(e.beta===null)return;faceDown=Math.abs(e.beta)>150;}
 async function enableMotion(){
   try{
     if(typeof DeviceOrientationEvent!=='undefined'&&typeof DeviceOrientationEvent.requestPermission==='function'){
-      const r=await DeviceOrientationEvent.requestPermission();if(r!=='granted'){$('s-motion-note').textContent='Motion was not allowed on this phone.';return false;}
+      const r=await DeviceOrientationEvent.requestPermission();if(r!=='granted'){$('s-motion-note').textContent='Not allowed on this phone: touch and hold the cup on screen instead.';return false;}
+      try{if(typeof DeviceMotionEvent.requestPermission==='function')await DeviceMotionEvent.requestPermission();}catch(e){}
     }
-    window.addEventListener('deviceorientation',onOrient);return true;
-  }catch(e){$('s-motion-note').textContent='Motion is not available here.';return false;}
+    window.addEventListener('deviceorientation',onOrient);window.addEventListener('devicemotion',onMotion);return true;
+  }catch(e){$('s-motion-note').textContent='Not available here: touch and hold the cup on screen instead.';return false;}
+}
+function cupStep(dt,now){
+  const want=opt.role!=='r'&&((opt.motion&&cupS.faceDown)||cupS.touchHold);
+  if(want&&!cupS.placed){cupS.placed=true;cupS.since=now;cupS.s=0;cupS.together=new Map();cupS.via=cupS.faceDown?'face-down':'touch';cupS.partner=opt.role==='g'?pairWith:'';audio.place();}
+  if(!want&&cupS.placed){release(now);}
+  if(!cupS.placed)return;
+  // the pull: stillness deepens it (about 20 s to full); movement loosens it
+  const still=cupS.via==='touch'||!opt.motion||cupS.motion<0.7;
+  const d=dt/1000;
+  cupS.s=still?cupS.s+d*(1-cupS.s)/9:Math.max(0,cupS.s-d/2.5);
+  // whom you hold with: everyone else whose cup is placed or pressed right now
+  for(const [id,m] of others()){const st=m.st||{};const w=st.p?st.s:(st.l>0.15?st.l*0.6:0);if(w>0)cupS.together.set(id,(cupS.together.get(id)||0)+w*d);}
+}
+function release(now){
+  const held=(now-cupS.since)/1000;cupS.placed=false;
+  if(held<2||cupS.s<0.08){cupS.s=0;return;}
+  // the mark: your own element, layered with the elements of everyone you held with
+  const L=new Map();L.set(myEl,Math.min(1,held/20)*cupS.s);
+  for(const [id,w] of cupS.together){const m=members.get(id);if(!m||!m.st)continue;const e=m.st.e;L.set(e,(L.get(e)||0)+Math.min(1,w/12));}
+  const tot=[...L.values()].reduce((a,b)=>a+b,0)||1;
+  cupS.mark={t:Date.now(),d:cupS.s,L:[...L.entries()].sort((a,b)=>b[1]-a[1]).map(([e,w])=>[e,w/tot]),who:cupS.together.size};
+  audio.pop(cupS.s);torch.until=0;cupS.s=0;
 }
 
-// ---------------- outputs: sound, vibration, flashlight, wake lock ----------------
-// five tones: 宮 Earth C4, 商 Metal D4, 角 Wood E4, 徵 Fire G4, 羽 Water A4 (placeholders)
-const FREQ=[329.63,392.0,261.63,293.66,440.0];
-const audio={ctx:null,voices:[],drone:null,
-  init(){try{const A=window.AudioContext||window.webkitAudioContext;this.ctx=new A();const out=this.ctx.createGain();out.gain.value=0.9;out.connect(this.ctx.destination);this.out=out;
-    this.voices=FREQ.map(f=>{const o=this.ctx.createOscillator(),g=this.ctx.createGain();o.type='sine';o.frequency.value=f;g.gain.value=0;o.connect(g);g.connect(out);o.start();return g;});}catch(e){this.ctx=null;}},
+// ---------------- what this phone tells the group ----------------
+let stT=0,lastSt='';
+function shareState(now){
+  const lv=cup.levels||[0,0,0,0,0];
+  const o={e:myEl,p:cupS.placed?1:0,s:Math.round(cupS.s*100),l:Math.round(Math.max(...lv)*100),r:opt.role,pt:opt.role==='g'?pairWith:''};
+  if(cupS.mark&&Date.now()-cupS.mark.t<MARK_MS)o.mk={a:Date.now()-cupS.mark.t,d:+cupS.mark.d.toFixed(2),L:cupS.mark.L.map(x=>[x[0],+x[1].toFixed(2)])};
+  const js=JSON.stringify(o),slow=now-stT>1200;
+  if((js!==lastSt&&now-stT>200)||slow){net.send('S'+js);lastSt=js;stT=now;}
+}
+
+// ---------------- pads (choose your element, press like the cup's pads) ----------------
+const pointers=new Map();
+const PAD_AZ=[-100,-45,0,45,100],PAD_R=[0.6,0.47,0.6,0.47,0.6];
+function padTargets(){
+  const t=[0,0,0,0,0];
+  for(const p of pointers.values())if(p.pad>=0)t[p.pad]=Math.max(t[p.pad],p.level);
+  if(cupS.placed)t[myEl]=Math.max(t[myEl],0.3+0.6*cupS.s);   // a placed cup holds your element, deeper as it pulls
+  return t;
+}
+let L={};   // layout
+function hit(x,y){
+  if(!L.cup)return null;
+  for(let i=0;i<5;i++){const p=L.pads[i];if(Math.hypot(x-p.x,y-p.y)<=L.cup.R*0.24)return {pad:i};}
+  if(Math.hypot(x-L.cup.x,y-L.cup.y)<=L.cup.R*0.95&&opt.role!=='r')return {dome:true};
+  return null;
+}
+const cv=$('cv');
+cv.addEventListener('pointerdown',e=>{
+  if(!running)return;e.preventDefault();
+  const r=cv.getBoundingClientRect(),h=hit(e.clientX-r.left,e.clientY-r.top);if(!h)return;
+  cv.setPointerCapture(e.pointerId);
+  if(h.pad!==undefined){myEl=h.pad;elChosen=true;pointers.set(e.pointerId,{pad:h.pad,level:opt.str});}
+  else{pointers.set(e.pointerId,{pad:-1,level:0});cupS.touchHold=true;}
+});
+function endPtr(e){const p=pointers.get(e.pointerId);pointers.delete(e.pointerId);if(p&&p.pad<0&&![...pointers.values()].some(q=>q.pad<0))cupS.touchHold=false;}
+['pointerup','pointercancel','lostpointercapture'].forEach(ev=>cv.addEventListener(ev,endPtr));
+
+// ---------------- pairs ----------------
+let pairWith='';
+function myGiver(){for(const [id,m] of others())if(m.st&&m.st.r==='g'&&m.st.pt===ME)return [id,m];return null;}
+function renderPairs(){
+  const box=$('pairs');
+  if(opt.role!=='g'){box.hidden=true;return;}
+  const rs=others().filter(([,m])=>m.st&&m.st.r==='r');
+  box.hidden=false;
+  const sig=rs.map(([id])=>id).join(',')+'|'+pairWith;if(box.dataset.sig===sig)return;box.dataset.sig=sig;
+  box.innerHTML='';
+  if(!rs.length){const b=document.createElement('button');b.disabled=true;b.textContent='Waiting for someone who receives';box.appendChild(b);return;}
+  rs.forEach(([id])=>{const b=document.createElement('button');b.textContent='Cup seat '+cupIdOf(id);b.setAttribute('aria-pressed',pairWith===id);
+    b.addEventListener('click',()=>{pairWith=pairWith===id?'':id;box.dataset.sig='';renderPairs();});box.appendChild(b);});
+}
+
+// ---------------- sound, vibration, flashlight, awake ----------------
+const FREQ=[329.63,392.0,261.63,293.66,440.0];   // 角 Wood E4, 徵 Fire G4, 宮 Earth C4, 商 Metal D4, 羽 Water A4 (placeholders)
+const audio={ctx:null,out:null,pull:null,drone:null,
+  init(){try{const A=window.AudioContext||window.webkitAudioContext;this.ctx=new A();this.out=this.ctx.createGain();this.out.gain.value=0.9;this.out.connect(this.ctx.destination);
+    const o=this.ctx.createOscillator(),o2=this.ctx.createOscillator(),g=this.ctx.createGain(),f=this.ctx.createBiquadFilter();o.type='sine';o2.type='triangle';f.type='lowpass';f.frequency.value=600;g.gain.value=0;
+    o.connect(g);o2.connect(f);f.connect(g);g.connect(this.out);o.start();o2.start();this.pull={o,o2,g};}catch(e){this.ctx=null;}},
   resume(){if(this.ctx&&this.ctx.state!=='running')this.ctx.resume().catch(()=>{});},
-  hold(levels){if(!this.ctx)return;const t=this.ctx.currentTime;this.voices.forEach((g,i)=>g.gain.setTargetAtTime(opt.sound?levels[i]*0.07:0,t,0.12));},
-  bell(el,vol){if(!this.ctx||!opt.sound)return;const t=this.ctx.currentTime;[1,2.76].forEach((m,k)=>{const o=this.ctx.createOscillator(),g=this.ctx.createGain();o.frequency.value=FREQ[el]*m;g.gain.setValueAtTime(0,t);g.gain.linearRampToValueAtTime((k?0.03:0.11)*vol,t+0.01);g.gain.exponentialRampToValueAtTime(0.0001,t+(k?0.8:2.2));o.connect(g);g.connect(this.out);o.start(t);o.stop(t+2.3);});},
+  // the pull: a low tone that deepens and grows as the cup draws
+  pullTo(s,el,on){if(!this.ctx)return;const t=this.ctx.currentTime,f=FREQ[el]/2*(1-0.14*s);
+    this.pull.o.frequency.setTargetAtTime(f,t,0.3);this.pull.o2.frequency.setTargetAtTime(f/2,t,0.3);
+    this.pull.g.gain.setTargetAtTime(opt.sound&&on?0.03+0.09*s:0,t,on?0.4:0.08);},
+  place(){if(!this.ctx||!opt.sound)return;this.noise(0.12,900,250,0.05);},
+  pop(s){if(!this.ctx||!opt.sound)return;this.noise(0.28,1800,220,0.12+0.2*s);},
+  noise(dur,f0,f1,vol){const t=this.ctx.currentTime,n=Math.floor(this.ctx.sampleRate*dur),b=this.ctx.createBuffer(1,n,this.ctx.sampleRate),d=b.getChannelData(0);for(let i=0;i<n;i++)d[i]=Math.random()*2-1;
+    const src=this.ctx.createBufferSource(),f=this.ctx.createBiquadFilter(),g=this.ctx.createGain();src.buffer=b;f.type='bandpass';f.Q.value=1.2;f.frequency.setValueAtTime(f0,t);f.frequency.exponentialRampToValueAtTime(f1,t+dur);
+    g.gain.setValueAtTime(vol,t);g.gain.exponentialRampToValueAtTime(0.0001,t+dur);src.connect(f);f.connect(g);g.connect(this.out);src.start(t);},
+  bell(el,vol){if(!this.ctx||!opt.sound)return;const t=this.ctx.currentTime;[1,2.76].forEach((m,k)=>{const o=this.ctx.createOscillator(),g=this.ctx.createGain();o.frequency.value=FREQ[el]*m;g.gain.setValueAtTime(0,t);g.gain.linearRampToValueAtTime((k?0.025:0.09)*vol,t+0.01);g.gain.exponentialRampToValueAtTime(0.0001,t+(k?0.8:2.2));o.connect(g);g.connect(this.out);o.start(t);o.stop(t+2.3);});},
   tune(el){if(!this.ctx)return;const t=this.ctx.currentTime;
     if(el===null){if(this.drone){this.drone.g.gain.setTargetAtTime(0,t,0.6);const d=this.drone;setTimeout(()=>{try{d.o.stop();}catch(e){}},3000);this.drone=null;}return;}
     if(this.drone&&this.drone.el===el)return;this.tune(null);if(!opt.sound)return;
-    const o=this.ctx.createOscillator(),g=this.ctx.createGain();o.frequency.value=FREQ[el]/2;g.gain.value=0;g.gain.setTargetAtTime(0.06,t,0.8);o.connect(g);g.connect(this.out);o.start();this.drone={o,g,el};},
-  low(){if(!this.ctx||!opt.sound)return;const t=this.ctx.currentTime,o=this.ctx.createOscillator(),g=this.ctx.createGain();o.frequency.value=98;g.gain.setValueAtTime(0,t);g.gain.linearRampToValueAtTime(0.09,t+0.4);g.gain.exponentialRampToValueAtTime(0.0001,t+5);o.connect(g);g.connect(this.out);o.start(t);o.stop(t+5.2);}
+    const o=this.ctx.createOscillator(),g=this.ctx.createGain();o.frequency.value=FREQ[el];g.gain.value=0;g.gain.setTargetAtTime(0.035,t,0.8);o.connect(g);g.connect(this.out);o.start();this.drone={o,g,el};}
 };
 const torch={track:null,on:false,last:0,until:0,ok:false,
-  async init(){
-    try{
-      const s=await navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:'environment'}},audio:false});
-      const tr=s.getVideoTracks()[0];this.track=tr;
+  async init(){try{const s=await navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:'environment'}},audio:false});const tr=s.getVideoTracks()[0];this.track=tr;
       const v=document.createElement('video');v.muted=true;v.playsInline=true;v.setAttribute('playsinline','');v.srcObject=s;v.style.cssText='position:fixed;width:1px;height:1px;opacity:0;pointer-events:none';document.body.appendChild(v);v.play().catch(()=>{});
       await tr.applyConstraints({advanced:[{torch:false}]});this.ok=true;$('s-torch-note').textContent='Ready.';return true;
-    }catch(e){$('s-torch-note').textContent='The flashlight could not be used on this phone ('+(e&&e.name||'error')+').';this.ok=false;return false;}
-  },
-  set(on,now){
-    // never change more than once every 900 ms: kept well under 3 flashes a second
-    if(!this.ok||on===this.on||now-this.last<900)return;
-    this.on=on;this.last=now;this.track.applyConstraints({advanced:[{torch:on}]}).catch(()=>{this.ok=false;});
-  },
+    }catch(e){$('s-torch-note').textContent='The flashlight could not be used on this phone ('+(e&&e.name||'error')+').';this.ok=false;return false;}},
+  set(on,now){if(!this.ok||on===this.on||now-this.last<900)return;this.on=on;this.last=now;this.track.applyConstraints({advanced:[{torch:on}]}).catch(()=>{this.ok=false;});},
   stop(){if(this.track){try{this.track.applyConstraints({advanced:[{torch:false}]});this.track.stop();}catch(e){}}this.track=null;this.ok=false;this.on=false;}
 };
 let wakeLock=null;
@@ -695,128 +772,237 @@ async function keepAwake(){try{if('wakeLock' in navigator&&document.visibilitySt
 document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible'&&running)keepAwake();});
 const canVibrate=typeof navigator.vibrate==='function';
 
-// ---------------- drawing: the phone as light ----------------
+// ---------------- drawing ----------------
 const ctx=cv.getContext('2d');let W=0,H=0,DPR=1;
 function resize(){DPR=Math.min(2,window.devicePixelRatio||1);W=window.innerWidth;H=window.innerHeight;cv.width=W*DPR;cv.height=H*DPR;ctx.setTransform(DPR,0,0,DPR,0,0);
-  const R=Math.min(W*0.46,H*0.33);layout={cx:W/2,cy:H*0.54,R,pads:PAD_AZ.map((a,i)=>{const t=a*Math.PI/180,r=R*PAD_R[i];return {x:W/2+r*Math.sin(t),y:H*0.54-r*Math.cos(t)};})};}
+  const lr=Math.min(W*0.34,H*0.17),cr=Math.min(W*0.28,H*0.135);
+  L={lake:{x:W/2,y:Math.max(150,H*0.3),R:lr},cup:{x:W/2,y:H*0.79,R:cr}};
+  L.pads=PAD_AZ.map((a,i)=>{const t=a*Math.PI/180,r=cr*PAD_R[i];return {x:L.cup.x+r*Math.sin(t),y:L.cup.y-r*Math.cos(t)};});
+  $('pairs').style.top=(L.lake.y+L.lake.R+18)+'px';}
 window.addEventListener('resize',resize);resize();
-const k255=255/C.LIMIT;
-function css(c,mul){const m=(mul===undefined?1:mul)*k255*opt.bright;return 'rgb('+Math.min(255,Math.round(c[0]*m))+','+Math.min(255,Math.round(c[1]*m))+','+Math.min(255,Math.round(c[2]*m))+')';}
-function cssA(c,mul,a){const m=mul*k255*opt.bright;return 'rgba('+Math.min(255,Math.round(c[0]*m))+','+Math.min(255,Math.round(c[1]*m))+','+Math.min(255,Math.round(c[2]*m))+','+a+')';}
-function draw(){
-  ctx.globalCompositeOperation='source-over';ctx.fillStyle='#000';ctx.fillRect(0,0,W,H);
-  const px=centre.pixels,se=centre.SEAT.get(myId),lo=opt.lightOnly;
-  ctx.globalCompositeOperation='lighter';
-  // this seat's slope: light from the lake (top) down to the seat (bottom)
-  if(se){const g=ctx.createLinearGradient(0,0,0,H);for(let k=0;k<8;k++)g.addColorStop(k/7,cssA(px[se[0]+k]||[0,0,0],lo?0.95:0.6,1));ctx.fillStyle=g;ctx.fillRect(0,0,W,H);}
-  // the lake: the five direction lights, glowing from the top edge (the side that faces the water)
-  let s=[0,0,0];for(let e=0;e<5;e++){const c=px[e]||[0,0,0];s[0]+=c[0];s[1]+=c[1];s[2]+=c[2];}
-  const lake=ctx.createRadialGradient(W/2,-H*0.05,0,W/2,-H*0.05,H*(lo?1.05:0.75));lake.addColorStop(0,cssA(s,lo?1:0.8,1));lake.addColorStop(1,'rgba(0,0,0,0)');ctx.fillStyle=lake;ctx.fillRect(0,0,W,H);
-  // edge light: your own voice entering the water
-  if(se){const ec=px[se[1]]||[0,0,0];const g=ctx.createLinearGradient(0,0,0,H*0.18);g.addColorStop(0,cssA(ec,1.2,1));g.addColorStop(1,'rgba(0,0,0,0)');ctx.fillStyle=g;ctx.fillRect(0,0,W,H*0.18);}
-  // the cup's own 12-light ring
-  const {cx,cy,R}=layout,rr=lo?R*1.05:R*0.93,th=lo?R*0.3:R*0.14;
-  for(let i=0;i<12;i++){const c=cup.ring[i];if(!(c[0]+c[1]+c[2]))continue;
-    const a0=(15+30*i-14)*Math.PI/180-Math.PI/2,a1=(15+30*i+14)*Math.PI/180-Math.PI/2;
-    const glow=ctx.createRadialGradient(cx+rr*Math.cos((a0+a1)/2),cy+rr*Math.sin((a0+a1)/2),0,cx+rr*Math.cos((a0+a1)/2),cy+rr*Math.sin((a0+a1)/2),R*(lo?0.9:0.55));
-    glow.addColorStop(0,cssA(c,1,lo?0.9:0.55));glow.addColorStop(1,'rgba(0,0,0,0)');ctx.fillStyle=glow;ctx.fillRect(0,0,W,H);
-    ctx.beginPath();ctx.arc(cx,cy,rr,a0,a1);ctx.strokeStyle=css(c,1.15);ctx.lineWidth=th;ctx.lineCap='butt';ctx.stroke();}
-  ctx.globalCompositeOperation='source-over';
-  if(!lo){
-    // the dome and the five pads (Earth at the front, Fire and Metal beside it, Wood and Water lower on the sides)
-    ctx.beginPath();ctx.arc(cx,cy,R*0.84,0,2*Math.PI);ctx.fillStyle='rgba(8,9,9,0.55)';ctx.fill();
-    ctx.beginPath();ctx.moveTo(cx,cy-R*1.12);ctx.lineTo(cx-R*0.05,cy-R*1.03);ctx.lineTo(cx+R*0.05,cy-R*1.03);ctx.closePath();ctx.fillStyle='rgba(220,225,222,.55)';ctx.fill();
-    const t=cup.target;
-    layout.pads.forEach((p,i)=>{const r=R*0.2;ctx.beginPath();ctx.arc(p.x,p.y,r,0,2*Math.PI);
-      ctx.fillStyle=t[i]>0?ELCSS[i]:'rgba(25,28,28,0.85)';ctx.globalAlpha=t[i]>0?0.35+0.55*t[i]:1;ctx.fill();ctx.globalAlpha=1;
-      ctx.lineWidth=Math.max(2,R*0.02);ctx.strokeStyle=ELCSS[i];ctx.stroke();
-      ctx.fillStyle='#eef1ee';ctx.font='600 '+Math.round(R*0.1)+'px "IBM Plex Sans",sans-serif';ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText(EL_NAME[i],p.x,p.y);});
-    if(!net.ok){ctx.fillStyle='#e7a27c';ctx.font='500 13px "IBM Plex Mono",monospace';ctx.textAlign='center';ctx.fillText('connecting to the group',cx,cy+R*1.32);}
+function ledRGB(c,k){const m=255/C.LIMIT*(k||1);return [Math.min(255,c[0]*m),Math.min(255,c[1]*m),Math.min(255,c[2]*m)];}
+
+// everyone around the lake: you at the bottom, the others in seat order
+function circle(){
+  const r=roster(),out=[],os=r.filter(id=>id!==ME),no=os.length;
+  r.forEach((id,i)=>{const j=os.indexOf(id);const a=id===ME?Math.PI/2:(no===1?-Math.PI/2:-Math.PI+Math.PI*0.18+(Math.PI*0.64)*j/(no-1));
+    const st=id===ME?{e:myEl,p:cupS.placed,s:cupS.s,l:Math.max(...(cup.levels||[0])),r:opt.role,pt:opt.role==='g'?pairWith:'',mk:cupS.mark}:((members.get(id)||{}).st||{});
+    out.push({id,a,st,seat:cupIdOf(id)});});
+  return out;
+}
+function drawMark(x,y,R,mk,alpha){
+  const age=(Date.now()-mk.t)/MARK_MS;if(age>=1)return;
+  const fade=Math.pow(1-age,1.3)*alpha,b=Math.min(1,age*2)*0.65;
+  // a round mark: a bruise-purple field with a ring for each element you held with, from the strongest inward
+  const g=ctx.createRadialGradient(x,y,R*0.1,x,y,R);
+  g.addColorStop(0,rgba(mix([90,30,55],BRUISE,0.6),0.55*fade*mk.d));
+  const n=mk.L.length;
+  mk.L.forEach(([e,w],i)=>{const pos=0.35+0.5*(i+0.5)/n;g.addColorStop(Math.max(0.12,pos-0.12),rgba(mix(ELRGB[e],BRUISE,b),0));g.addColorStop(pos,rgba(mix(ELRGB[e],BRUISE,0.35+b*0.5),(0.3+0.5*w)*fade*(0.5+0.5*mk.d)));g.addColorStop(Math.min(0.97,pos+0.1),rgba(mix(ELRGB[e],BRUISE,b),0.05*fade));});
+  g.addColorStop(1,rgba(BRUISE,0));
+  ctx.fillStyle=g;ctx.beginPath();ctx.arc(x,y,R,0,2*Math.PI);ctx.fill();
+}
+let syncK=0;
+// what you make together: one smooth rolling-circle line per person (a trail a few seconds long, fading at its tail).
+// In tune, every line takes the same shape and phase, so they settle onto one closed figure.
+function drawTraces(ring,now){
+  const lk=L.lake,st=centre.state||'',tune=st.startsWith('in tune'),circ=st.startsWith('circulating');
+  syncK+=((tune?1:circ?0.3:0)-syncK)*0.03;
+  const active=ring.filter(p=>p.st.p||p.st.l>0.15),n=Math.max(2,active.length);
+  ctx.save();ctx.beginPath();ctx.arc(lk.x,lk.y,lk.R,0,2*Math.PI);ctx.clip();ctx.lineCap='round';ctx.lineJoin='round';
+  if(syncK>0.55&&active.length>1){
+    // the shared figure, faint and whole
+    const r=1/n,d=0.75*r,s=lk.R*0.8,e=active[0].st.e||0;ctx.beginPath();
+    for(let th=0;th<=2*Math.PI+0.01;th+=0.01){const x=(1-r)*Math.cos(th)+d*Math.cos((1-r)/r*th),y=(1-r)*Math.sin(th)-d*Math.sin((1-r)/r*th);th?ctx.lineTo(lk.x+x*s,lk.y+y*s):ctx.moveTo(lk.x+x*s,lk.y+y*s);}
+    ctx.strokeStyle=rgba(mix(ELRGB[e],[255,255,255],0.3),0.35*(syncK-0.55)/0.45);ctx.lineWidth=1.5;ctx.stroke();
   }
+  ctx.globalCompositeOperation='lighter';ctx.lineCap='butt';
+  active.forEach(p=>{
+    const e=p.st.e||0,lvl=p.st.p?0.4+0.6*p.st.s:p.st.l;
+    const kOwn=2.4+e*0.37+0.2*Math.sin(now/9000+e*1.7),k=kOwn+(n-kOwn)*syncK;
+    const r=1/k,d=0.75*r,ph=(e*1.3)*(1-syncK),s=lk.R*0.8*(0.6+0.4*lvl);
+    const Q=th=>[(1-r)*Math.cos(th)+d*Math.cos((1-r)/r*th),(1-r)*Math.sin(th)-d*Math.sin((1-r)/r*th)];
+    const th1=now*0.0005+ph,len=2.4,chunks=12,step=0.012;
+    for(let c=0;c<chunks;c++){
+      const a0=th1-len+len*c/chunks,a1=th1-len+len*(c+1)/chunks;
+      ctx.beginPath();let q=Q(a0);ctx.moveTo(lk.x+q[0]*s,lk.y+q[1]*s);
+      for(let th=a0+step;th<a1;th+=step){q=Q(th);ctx.lineTo(lk.x+q[0]*s,lk.y+q[1]*s);}
+      q=Q(a1);ctx.lineTo(lk.x+q[0]*s,lk.y+q[1]*s);
+      const k2=(c+1)/chunks;ctx.strokeStyle=rgba(ELRGB[e],(0.12+0.75*lvl)*k2*k2);ctx.lineWidth=1+2.2*lvl*k2;ctx.stroke();
+    }
+  });
+  ctx.restore();ctx.globalCompositeOperation='source-over';
+}
+function draw(now){
+  const bright=opt.bright;
+  // FACE-DOWN: the whole screen is light on the skin, deepening with the pull, breathing with the group when together
+  if(cupS.placed&&cupS.via==='face-down'){
+    const tog=[...others()].some(([,m])=>m.st&&(m.st.p||m.st.l>0.15));
+    const br=tog?0.75+0.25*breathAt(Date.now()):0.85+0.15*Math.sin(now/900);
+    const c=mix(ELRGB[myEl],BRUISE,cupS.s*0.35);const k=(0.25+0.75*cupS.s)*br*bright;
+    ctx.fillStyle=rgba([c[0]*k,c[1]*k,c[2]*k],1);ctx.fillRect(0,0,W,H);return;
+  }
+  ctx.fillStyle='#000';ctx.fillRect(0,0,W,H);
+  const lk=L.lake,ring=circle();
+  // the lake: water lit by the five direction lights of the group's centre
+  const px=centre.pixels;let sum=[0,0,0];for(let e=0;e<5;e++){const c=px[e]||[0,0,0];sum[0]+=c[0];sum[1]+=c[1];sum[2]+=c[2];}
+  const lc=ledRGB(sum,0.9*bright);
+  const wg=ctx.createRadialGradient(lk.x,lk.y,0,lk.x,lk.y,lk.R);wg.addColorStop(0,rgba(mix([10,14,18],lc,0.9),1));wg.addColorStop(1,'rgba(10,14,18,1)');
+  ctx.fillStyle=wg;ctx.beginPath();ctx.arc(lk.x,lk.y,lk.R,0,2*Math.PI);ctx.fill();
+  ctx.strokeStyle='rgba(220,225,222,0.18)';ctx.lineWidth=1.5;ctx.stroke();
+  // streams: each person's colour flowing in from their side, as strong as their pull or press
+  ctx.globalCompositeOperation='lighter';
+  ring.forEach(p=>{const st=p.st,lv=st.p?0.35+0.65*st.s:(st.l||0);if(lv<=0.02)return;
+    const ox=p.id===ME?L.cup.x:lk.x+Math.cos(p.a)*lk.R*1.25,oy=p.id===ME?L.cup.y-L.cup.R*1.1:lk.y+Math.sin(p.a)*lk.R*1.25;
+    const g=ctx.createLinearGradient(ox,oy,lk.x,lk.y);g.addColorStop(0,rgba(ELRGB[st.e||0],0.65*lv*bright));g.addColorStop(1,rgba(ELRGB[st.e||0],0));
+    ctx.strokeStyle=g;ctx.lineWidth=lk.R*(0.04+0.1*lv);ctx.lineCap='round';ctx.beginPath();ctx.moveTo(ox,oy);ctx.lineTo(lk.x+Math.cos(p.a)*lk.R*0.15,lk.y+Math.sin(p.a)*lk.R*0.15);ctx.stroke();});
+  // what you make together: the traces
+  ctx.globalCompositeOperation='source-over';
+  drawTraces(ring,Date.now());
+  // pairs: a soft line from the giver to the one they cup
+  ring.forEach(p=>{if(p.st.r!=='g'||!p.st.pt)return;const q=ring.find(x=>x.id===p.st.pt);if(!q)return;
+    const rr=lk.R*1.42,P=z=>z.id===ME?[L.cup.x,L.cup.y-L.cup.R*1.3]:[lk.x+Math.cos(z.a)*rr,lk.y+Math.sin(z.a)*rr];const [ax,ay]=P(p),[bx,by]=P(q);
+    ctx.strokeStyle=rgba(ELRGB[p.st.e||0],0.5);ctx.lineWidth=2;ctx.setLineDash([]);ctx.beginPath();ctx.moveTo(ax,ay);ctx.quadraticCurveTo(lk.x+(ax+bx-2*lk.x)*0.9,lk.y+(ay+by-2*lk.y)*0.9,bx,by);ctx.stroke();});
+  // the people: a small cup for each, filling as it pulls; a fading mark after release
+  ring.forEach(p=>{if(p.id===ME)return;const st=p.st,rr=lk.R*1.42,x=lk.x+Math.cos(p.a)*rr,y=lk.y+Math.sin(p.a)*rr,cr=lk.R*0.17,col=ELRGB[st.e||0];
+    if(st.mk)drawMark(x,y,cr*2.3,st.mk,1);
+    ctx.beginPath();ctx.arc(x,y,cr,0,2*Math.PI);ctx.fillStyle='rgba(16,18,18,0.9)';ctx.fill();
+    ctx.lineWidth=2;ctx.strokeStyle=rgba(col,st.r==='r'?0.35:0.8);ctx.stroke();
+    const lv=st.p?st.s:(st.l||0);if(lv>0.01){ctx.beginPath();ctx.arc(x,y,cr*0.82,-Math.PI/2,-Math.PI/2+2*Math.PI*lv);ctx.strokeStyle=rgba(col,0.95);ctx.lineWidth=cr*0.28;ctx.stroke();}
+    ctx.fillStyle='#dfe3e0';ctx.font='500 12px "IBM Plex Sans",sans-serif';ctx.textAlign='center';ctx.textBaseline='top';
+    const tag=('seat '+p.seat)+(st.r==='g'?' · gives':st.r==='r'?' · receives':'');ctx.fillText(tag,x,y+cr+5);
+    ctx.fillStyle='#9aa29e';ctx.fillText(st.p?'placed':EL_NAME[st.e||0],x,y+cr+20);});
+  // the moment, in words
+  const cap=caption();ctx.fillStyle='#ecefec';ctx.font='400 '+Math.round(Math.min(21,W*0.052))+'px "Gowun Batang",Georgia,serif';ctx.textAlign='center';ctx.textBaseline='alphabetic';
+  const cy=lk.y+lk.R+(opt.role==='g'?78:44);wrapText(cap[0],W/2,cy,W*0.86,26);
+  ctx.fillStyle='#9aa29e';ctx.font='400 13.5px "IBM Plex Sans",sans-serif';wrapText(cap[1],W/2,cy+26,W*0.86,19);
+  // your cup (or, for a receiver, what is happening under the cup on your skin)
+  if(opt.role==='r')drawUnder(now);else drawCup(now);
+  if(cupS.mark&&opt.role!=='r'){const age=Date.now()-cupS.mark.t;if(age<MARK_MS)drawMark(L.cup.x,L.cup.y,L.cup.R*1.45,cupS.mark,1);}
+  if(!net.ok){ctx.fillStyle='#e7a27c';ctx.font='500 13px "IBM Plex Mono",monospace';ctx.textAlign='center';ctx.fillText('connecting to the group',W/2,H-24);}
+}
+function wrapText(t,x,y,maxW,lh){const words=t.split(' ');let line='',yy=y;for(const w of words){const test=line?line+' '+w:w;if(ctx.measureText(test).width>maxW&&line){ctx.fillText(line,x,yy);line=w;yy+=lh;}else line=test;}if(line)ctx.fillText(line,x,yy);}
+function drawCup(now){
+  const {x,y,R}=L.cup;
+  // the 12-light ring of the cup (firmware)
+  for(let i=0;i<12;i++){const c=cup.ring[i];if(!(c[0]+c[1]+c[2]))continue;const a0=(15+30*i-14)*Math.PI/180-Math.PI/2,a1=(15+30*i+14)*Math.PI/180-Math.PI/2;
+    ctx.beginPath();ctx.arc(x,y,R*1.02,a0,a1);ctx.strokeStyle=rgba(ledRGB(c,opt.bright),1);ctx.lineWidth=R*0.12;ctx.stroke();}
+  ctx.beginPath();ctx.arc(x,y,R*0.9,0,2*Math.PI);ctx.fillStyle=cupS.placed?rgba(mix([20,10,16],BRUISE,cupS.s*0.6),1):'rgba(18,20,20,1)';ctx.fill();
+  if(cupS.placed){ctx.beginPath();ctx.arc(x,y,R*0.9,-Math.PI/2,-Math.PI/2+2*Math.PI*cupS.s);ctx.strokeStyle=rgba(ELRGB[myEl],0.9);ctx.lineWidth=4;ctx.stroke();}
+  const t=cup.target||[0,0,0,0,0];
+  L.pads.forEach((p,i)=>{const r=R*0.21;ctx.beginPath();ctx.arc(p.x,p.y,r,0,2*Math.PI);
+    ctx.fillStyle=t[i]>0?rgba(ELRGB[i],0.35+0.55*t[i]):(i===myEl?'rgba(40,44,44,1)':'rgba(25,28,28,1)');ctx.fill();
+    ctx.lineWidth=i===myEl?4:2;ctx.strokeStyle=ELCSS[i];ctx.stroke();
+    ctx.fillStyle='#eef1ee';ctx.font='600 '+Math.round(R*0.11)+'px "IBM Plex Sans",sans-serif';ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText(EL_NAME[i],p.x,p.y);});
+}
+function drawUnder(now){
+  // receiver: the skin under the cup. The giver's pull shows as a ring drawing in; on release, the mark
+  const {x,y,R}=L.cup,g=myGiver();
+  ctx.beginPath();ctx.arc(x,y,R*1.25,0,2*Math.PI);ctx.fillStyle='rgba(32,22,24,1)';ctx.fill();
+  if(g){const st=g[1].st;
+    if(st.p){const s=st.s,br=0.75+0.25*breathAt(Date.now());const gr=ctx.createRadialGradient(x,y,R*0.2,x,y,R*1.2);
+      gr.addColorStop(0,rgba(mix(ELRGB[st.e],BRUISE,0.3),0.15*br));gr.addColorStop(0.7,rgba(mix(ELRGB[st.e],BRUISE,0.25+0.4*s),(0.2+0.7*s)*br));gr.addColorStop(1,rgba(BRUISE,0));
+      ctx.fillStyle=gr;ctx.beginPath();ctx.arc(x,y,R*1.2,0,2*Math.PI);ctx.fill();
+      ctx.beginPath();ctx.arc(x,y,R*(1.15-0.25*s),0,2*Math.PI);ctx.strokeStyle=rgba(ELRGB[st.e],0.6);ctx.lineWidth=2;ctx.stroke();}
+    if(st.mk)drawMark(x,y,R*1.3,st.mk,1);
+  }
+}
+function caption(){
+  const st=centre.state||'',g=opt.role==='r'?myGiver():null;
+  if(opt.role==='r'){
+    if(!g)return ['Hold out your palm or forearm.','Keep this phone face-up beside you. Someone who gives will choose you.'];
+    const s=g[1].st;if(s.p)return ['The cup is on your skin.',s.s<0.5?'Breathe out. The pull is building.':'A deep pull now. Notice where it draws.'];
+    if(s.mk)return ['The mark on your skin.','It holds the colours of everyone you were held with. It fades in 40 s.'];
+    return ['Your giver is getting ready.','Seat '+cupIdOf(g[0])+' will place the cup.'];
+  }
+  if(cupS.mark&&Date.now()-cupS.mark.t<MARK_MS)return ['Your mark.',cupS.mark.who?'Made with '+cupS.mark.who+(cupS.mark.who===1?' other cup. ':' other cups. ')+'It fades in 40 s.':'You held alone this time. It fades in 40 s.'];
+  if(cupS.placed)return [cupS.s<0.4?'Hold still. The pull is building.':'Deep now. Breathe with the others.',moment(st)];
+  if(opt.role==='g'&&!pairWith)return ['Choose who you will cup.','Then lay your phone face-down on their palm or forearm.'];
+  return [opt.motion?'Lay the phone face-down on '+(opt.role==='g'?'their':'your')+' skin.':'Touch and hold the cup to place it.',moment(st)||'Tap a pad first to choose your element.'];
+}
+function moment(st){
+  if(st.startsWith('in tune'))return 'In tune: everyone holds '+EL_NAME[ELEMENTS.findIndex(e=>st.includes(e[0]))]+'. The traces become one figure.';
+  if(st.startsWith('circulating'))return 'Circulating: '+st.slice(13).replace(/ \(.*$/,'').split(' > ').map(n=>EL_NAME[ELEMENTS.findIndex(e=>e[0]===n)]).join(' feeds ')+'.';
+  if(st.startsWith('crossing'))return 'Crossing: '+st.slice(10).replace(/ \(.*$/,'').split(' / ').map(n=>EL_NAME[ELEMENTS.findIndex(e=>e[0]===n)]).join(' and ')+' keep each other in check.';
+  if(st.startsWith('waiting'))return 'One cup at the water. When another arrives, you will feel it.';
+  if(st.startsWith('mark'))return 'The group\'s mark is fading in the water.';
+  return '';
 }
 
 // ---------------- main loop ----------------
-let running=false,acc=0,last=0,beatT=0,seatT=0,prev={flash:null,wave:null,buzz:0,tune:null,mark:null},humT=0;
-function step(){
-  host.now+=20;
-  cup.target=padTargets();
-  cup.tick(host.now);centre.tick(host.now);
-}
+let running=false,acc=0,last=0,beatT=0,seatT=0,prev={flash:null,wave:null,tune:null};
+function step(){host.now+=20;cup.target=padTargets();cup.tick(host.now);centre.tick(host.now);}
 function frame(t){
   if(!running)return;
   const dt=Math.min(200,t-last);last=t;acc+=dt;let n=0;while(acc>=20&&n<20){step();acc-=20;n++;}if(n>=20)acc=0;
   const now=Date.now();
+  cupStep(dt,t);
   if(now-beatT>2000){net.beat();beatT=now;}
-  if(now-seatT>400){updateSeats();seatT=now;}
-  outputs(now);draw();
-  if(opt.debug)$('debug').textContent=(host.line||'centre: starting')+'\nrelay: '+(net.ok?'connected':'connecting')+' ('+BROKERS[net.broker].split('/')[2]+') · sent '+net.sent+' · heard '+net.got+(faceDown?' · face-down':'');
+  if(now-seatT>400){updateSeats();renderPairs();seatT=now;}
+  shareState(t);outputs(now);draw(t);
+  if(opt.debug)$('debug').textContent=(host.line||'centre: starting')+'\nrelay '+(net.ok?'connected':'connecting')+' · sent '+net.sent+' · heard '+net.got+'\ncup '+(cupS.placed?'placed ('+cupS.via+') pull '+Math.round(cupS.s*100)+'%':'not placed')+' · motion '+cupS.motion.toFixed(2)+(cupS.faceDown?' · face-down':'');
   requestAnimationFrame(frame);
 }
 function outputs(now){
-  audio.hold(cup.levels||[0,0,0,0,0]);
-  // someone else's light reached the water
-  if(cup.flash&&cup.flash!==prev.flash){prev.flash=cup.flash;audio.bell(cup.flash[0],1);torch.until=Math.max(torch.until,now+450);}
-  // the circulating wave passes your element
-  if(cup.wave&&cup.wave!==prev.wave){prev.wave=cup.wave;const lv=cup.levels||[0,0,0,0,0];if(Math.max(...lv)>0&&lv.indexOf(Math.max(...lv))===cup.wave[0]){audio.bell(cup.wave[0],0.5);torch.until=Math.max(torch.until,now+350);}}
-  // the motor: short buzzes, and a slow hum while in tune
-  if(opt.vib&&canVibrate){
-    if(cup.buzz_until&&cup.buzz_until!==prev.buzz&&cup.buzz_until>host.now){prev.buzz=cup.buzz_until;try{navigator.vibrate(Math.max(30,cup.buzz_until-host.now));}catch(e){}}
-    else if(cup.hum&&now-humT>2400){humT=now;try{navigator.vibrate(60);}catch(e){}}
+  const g=opt.role==='r'?myGiver():null;
+  const pulling=cupS.placed?cupS.s:(g&&g[1].st.p?g[1].st.s:-1);
+  const el=cupS.placed?myEl:(g?g[1].st.e:myEl);
+  audio.pullTo(Math.max(0,pulling),el,pulling>=0);
+  // the pull, felt: slow buzzes, longer as it deepens; in step with the shared breath when others hold too
+  if(opt.vib&&canVibrate&&pulling>0.03){
+    const tog=others().some(([,m])=>m.st&&(m.st.p||m.st.l>0.15));
+    const period=tog?2500:Math.round(1900-700*pulling);
+    const slot=Math.floor(now/period);if(slot!==cupS.pulseT){cupS.pulseT=slot;try{navigator.vibrate(Math.round(25+70*pulling));}catch(e){}}
   }
-  // in tune: a drone, and the flashlight on for the first part of each shared breath
+  if(cup.flash&&cup.flash!==prev.flash){prev.flash=cup.flash;audio.bell(cup.flash[0],0.8);if(opt.vib&&canVibrate&&pulling<0){try{navigator.vibrate(60);}catch(e){}}}
   const tn=cup.tune===undefined?null:cup.tune;if(tn!==prev.tune){prev.tune=tn;audio.tune(tn);}
-  const mk=centre.slope_marks?centre.slope_marks[1]:null;if(mk&&mk!==prev.mark){prev.mark=mk;audio.low();}
-  if(opt.torch){const breathOn=tn!==null&&((host.now%10000)<3000);torch.set(breathOn||now<torch.until,now);}else if(torch.on)torch.set(false,now+1e6);
+  // the flame: the flashlight on the cup's back glows during the shared in-breath once the pull is deep
+  if(opt.torch){const deep=cupS.placed&&cupS.s>0.5&&breathAt(now)>0.5;torch.set(deep,now);}
 }
 
-// ---------------- start, settings, leave ----------------
-let group='';
-const gIn=$('g');
+// ---------------- start, settings ----------------
+let group='';const gIn=$('g');
+function clean(s){return String(s||'').toLowerCase().replace(/[^a-z0-9-]/g,'').slice(0,24);}
 function pickGroup(name){group=name;gIn.value=name;document.querySelectorAll('#groups button').forEach(b=>b.setAttribute('aria-pressed',b.dataset.g===name));}
 GROUPS.forEach(([n,h])=>{const b=document.createElement('button');b.dataset.g=n;b.innerHTML=n+'<small>'+h+'</small>';b.setAttribute('aria-pressed','false');b.addEventListener('click',()=>pickGroup(n));$('groups').appendChild(b);});
-gIn.addEventListener('input',()=>{group=gIn.value;document.querySelectorAll('#groups button').forEach(b=>b.setAttribute('aria-pressed',b.dataset.g===gIn.value.trim().toLowerCase()));});
-const qp=new URLSearchParams(location.search).get('g');
-pickGroup(clean(qp||'hap'));
-function clean(s){return String(s||'').toLowerCase().replace(/[^a-z0-9-]/g,'').slice(0,24);}
+gIn.addEventListener('input',()=>{document.querySelectorAll('#groups button').forEach(b=>b.setAttribute('aria-pressed',b.dataset.g===clean(gIn.value)));});
+const qs=new URLSearchParams(location.search);pickGroup(clean(qs.get('g')||'hap'));
+document.querySelectorAll('#modes button').forEach(b=>b.addEventListener('click',()=>{opt.mode=b.dataset.m;document.querySelectorAll('#modes button').forEach(x=>x.setAttribute('aria-pressed',x===b));$('roles').hidden=opt.mode!=='pair';}));
+document.querySelectorAll('#roles button').forEach(b=>b.addEventListener('click',()=>{document.querySelectorAll('#roles button').forEach(x=>x.setAttribute('aria-pressed',x===b));}));
 $('go').addEventListener('click',async()=>{
   const g=clean(gIn.value);if(!g){gIn.focus();return;}group=g;
+  opt.role=opt.mode==='pair'?document.querySelector('#roles button[aria-pressed="true"]').dataset.r:'s';
   opt.sound=$('o-sound').checked;opt.vib=$('o-vib').checked;opt.torch=$('o-torch').checked;opt.motion=$('o-motion').checked;
-  // everything that needs this tap: sound, motion permission, flashlight, screen awake, full screen
   audio.init();audio.resume();
   const motionP=opt.motion?enableMotion():Promise.resolve(false);
   try{const el=document.documentElement;if(el.requestFullscreen&&/Android/i.test(navigator.userAgent))el.requestFullscreen().catch(()=>{});}catch(e){}
   $('go').disabled=true;$('go').textContent='Starting';
-  const torchP=opt.torch?torch.init():Promise.resolve(false);
-  keepAwake();
+  const torchP=opt.torch?torch.init():Promise.resolve(false);keepAwake();
   opt.motion=await motionP;opt.torch=(await torchP)&&opt.torch;
   if(!canVibrate)$('s-vib-note').textContent='This phone does not offer vibration to web pages (iPhone).';
   joinT=Date.now();makeFirmware();net.start(group);
   history.replaceState(null,'','?g='+group);
   $('start').hidden=true;$('bar').hidden=false;$('b-group').textContent=group;running=true;last=performance.now();acc=0;
-  syncSettings();wakeBar();requestAnimationFrame(frame);
+  syncSettings();requestAnimationFrame(frame);
 });
-let barTimer=0;function wakeBar(){$('bar').classList.remove('dim');clearTimeout(barTimer);barTimer=setTimeout(()=>$('bar').classList.add('dim'),4000);}
 function syncSettings(){
-  $('s-sound').checked=opt.sound;$('s-vib').checked=opt.vib;$('s-torch').checked=opt.torch;$('s-motion').checked=opt.motion;$('s-size').checked=opt.size;$('s-lightonly').checked=opt.lightOnly;$('s-debug').checked=opt.debug;
+  $('s-sound').checked=opt.sound;$('s-vib').checked=opt.vib;$('s-torch').checked=opt.torch;$('s-motion').checked=opt.motion;$('s-debug').checked=opt.debug;
   const url=location.origin+location.pathname+'?g='+group;$('s-link').textContent=url;
   const q=$('qr');q.innerHTML='';try{new QRCode(q,{text:url,width:180,height:180,correctLevel:QRCode.CorrectLevel.M});}catch(e){q.hidden=true;}
 }
 $('b-set').addEventListener('click',()=>{syncSettings();$('s-net').textContent='relay: '+(net.ok?'connected':'connecting')+' · '+roster().length+' phones in '+group;$('settings').hidden=false;});
-$('s-close').addEventListener('click',()=>{$('settings').hidden=true;wakeBar();});
-$('settings').addEventListener('click',e=>{if(e.target.id==='settings'){$('settings').hidden=true;}});
+$('s-close').addEventListener('click',()=>$('settings').hidden=true);
+$('settings').addEventListener('click',e=>{if(e.target.id==='settings')$('settings').hidden=true;});
 $('s-bright').addEventListener('input',e=>{opt.bright=+e.target.value;$('s-bright-o').textContent=Math.round(opt.bright*100)+'%';});
 $('s-str').addEventListener('input',e=>{opt.str=+e.target.value;$('s-str-o').textContent=opt.str.toFixed(2);});
-$('s-size').addEventListener('change',e=>opt.size=e.target.checked);
-$('s-lightonly').addEventListener('change',e=>opt.lightOnly=e.target.checked);
 $('s-debug').addEventListener('change',e=>{opt.debug=e.target.checked;$('debug').hidden=!opt.debug;});
 $('s-sound').addEventListener('change',e=>{opt.sound=e.target.checked;audio.resume();if(!opt.sound)audio.tune(null);});
 $('s-vib').addEventListener('change',e=>opt.vib=e.target.checked);
 $('s-torch').addEventListener('change',async e=>{if(e.target.checked){opt.torch=await torch.init();e.target.checked=opt.torch;}else{opt.torch=false;torch.stop();}});
-$('s-motion').addEventListener('change',async e=>{if(e.target.checked){opt.motion=await enableMotion();e.target.checked=opt.motion;}else{opt.motion=false;window.removeEventListener('deviceorientation',onOrient);faceDown=false;}});
-$('s-leave').addEventListener('click',()=>{running=false;net.stop();torch.stop();audio.tune(null);audio.hold([0,0,0,0,0]);members.clear();pointers.clear();
-  $('settings').hidden=true;$('bar').hidden=true;$('debug').hidden=true;$('start').hidden=false;$('go').disabled=false;$('go').textContent='Start';ctx.clearRect(0,0,W,H);});
+$('s-motion').addEventListener('change',async e=>{if(e.target.checked){opt.motion=await enableMotion();e.target.checked=opt.motion;}else{opt.motion=false;window.removeEventListener('deviceorientation',onOrient);window.removeEventListener('devicemotion',onMotion);cupS.faceDown=false;}});
+$('s-leave').addEventListener('click',()=>{running=false;net.stop();torch.stop();audio.tune(null);audio.pullTo(0,0,false);members.clear();pointers.clear();cupS.placed=false;cupS.touchHold=false;
+  $('settings').hidden=true;$('bar').hidden=true;$('pairs').hidden=true;$('debug').hidden=true;$('start').hidden=false;$('go').disabled=false;$('go').textContent='Start';ctx.clearRect(0,0,W,H);});
 window.addEventListener('pagehide',()=>net.stop());
-window.CircCup={get cup(){return cup;},get centre(){return centre;},roster,net,pointers,opt};
+window.CircCup={get cup(){return cup;},get centre(){return centre;},roster,net,cupS,opt,members,setPair:id=>{pairWith=id;},get myEl(){return myEl;},setEl:e=>{myEl=e;elChosen=true;},ME};
 })();
 </script>
 </body>
