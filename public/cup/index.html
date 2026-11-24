@@ -103,6 +103,7 @@ input[type=range]{width:100%;accent-color:var(--accent)}
         <label class="opt"><input type="checkbox" id="o-motion" checked><b>Body sensing</b><span>Knows when the phone lies screen-up on your skin, and how still you hold it. Without it, touch and hold the cup on screen to place it.</span></label>
         <label class="opt"><input type="checkbox" id="o-sound" checked><b>Sound</b><span>The pull, the release, the five tones (placeholders).</span></label>
         <label class="opt"><input type="checkbox" id="o-vib" checked><b>Vibration</b><span>You feel the pull. Android only.</span></label>
+        <label class="opt"><input type="checkbox" id="o-pulse" checked><b>Pulse</b><span>Rest a fingertip on the back camera and your heartbeat becomes light your group can see. Read on this phone only: no image leaves it, and only the beat travels to your group. Not a medical measurement.</span></label>
         <label class="opt"><input type="checkbox" id="o-torch"><b>Flashlight</b><span>While a cup pulls deep, the light on its back shines into the skin on each in-breath, so the palm glows, a little like the warmth of fire cupping. It can feel slightly warm. Asks for the camera, used only to switch the light. Nothing is recorded.</span></label>
       </div>
     </div>
@@ -120,6 +121,7 @@ input[type=range]{width:100%;accent-color:var(--accent)}
     <input id="s-str" type="range" min="0.2" max="1" step="0.05" value="0.8">
     <label class="opt"><input type="checkbox" id="s-sound"><b>Sound</b><span></span></label>
     <label class="opt"><input type="checkbox" id="s-vib"><b>Vibration</b><span id="s-vib-note"></span></label>
+    <label class="opt"><input type="checkbox" id="s-pulse"><b>Pulse</b><span id="s-pulse-note"></span></label>
     <label class="opt"><input type="checkbox" id="s-torch"><b>Flashlight</b><span id="s-torch-note"></span></label>
     <label class="opt"><input type="checkbox" id="s-motion"><b>Body sensing</b><span id="s-motion-note"></span></label>
     <div class="row"><label for="s-skin">Skin sensitivity (lowest tremor that counts as skin)</label><output id="s-skin-o" class="status">0.030</output></div>
@@ -572,7 +574,7 @@ const ELCSS=ELRGB.map(c=>'rgb('+c.join(',')+')');
 const BRUISE=[142,47,98];
 const GROUPS=[['well','井'],['spring','滎'],['stream','輸'],['river','經'],['hap','合']];
 const ME=Math.random().toString(36).slice(2,10);
-const opt={sound:true,vib:true,torch:false,motion:true,debug:false,bright:1,str:0.8,mode:'self',role:'s',skin:0.03};
+const opt={sound:true,vib:true,torch:false,pulse:true,motion:true,debug:false,bright:1,str:0.8,mode:'self',role:'s',skin:0.03};
 const MARK_MS=40000;
 const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
 const mix=(a,b,k)=>[a[0]+(b[0]-a[0])*k,a[1]+(b[1]-a[1])*k,a[2]+(b[2]-a[2])*k];
@@ -628,6 +630,7 @@ const net={client:null,base:'',ok:false,broker:0,sent:0,got:0,
       if(kind==='m'){this.got++;
         if(/^C(,\d{1,3}){5}$/.test(s)){const cid=cupIdOf(id);if(cid>=1&&cid<=5)centre.inbox.push({at:host.now+2,msg:'C'+cid+s.slice(1)});}
         else if(s[0]==='S'){try{m.st=readState(JSON.parse(s.slice(1)));}catch(e){}}
+        else if(s[0]==='B'){try{const b=+JSON.parse(s.slice(1)).b;if(b>=30&&b<=200){m.bpm=Math.round(b);m.beatAt=Date.now();audio.tick((m.st&&m.st.e)||0);meetCheck(id,m.beatAt);}}catch(e){}}
       }
     });
   },
@@ -641,6 +644,7 @@ function readState(o){
   st.e=Number.isInteger(o.e)&&o.e>=0&&o.e<5?o.e:0;
   st.p=o.p===1;st.s=clamp(+o.s||0,0,100)/100;st.l=clamp(+o.l||0,0,100)/100;
   st.r=['s','g','r'].includes(o.r)?o.r:'s';
+  st.hr=Number.isInteger(o.hr)&&o.hr>=30&&o.hr<=200?o.hr:0;
   st.pt=typeof o.pt==='string'&&/^[a-z0-9]{4,12}$/.test(o.pt)?o.pt:'';
   if(o.mk&&Array.isArray(o.mk.L)){st.mk={t:Date.now()-clamp(+o.mk.a||0,0,MARK_MS),d:clamp(+o.mk.d||0,0,1),L:o.mk.L.filter(x=>Array.isArray(x)&&Number.isInteger(x[0])&&x[0]>=0&&x[0]<5).slice(0,5).map(x=>[x[0],clamp(+x[1]||0,0,1)])};}
   return st;
@@ -669,7 +673,7 @@ function cupStep(dt,now){
   const onBody=opt.motion&&cupS.flatUp&&cupS.motion<2.5&&(cupS.motion>=opt.skin||(cupS.placed&&cupS.via==='body'));
   cupS.bodyT=onBody?cupS.bodyT+dt:0;
   const want=opt.role!=='r'&&((cupS.placed&&cupS.via==='body')?onBody:(cupS.bodyT>1200||cupS.touchHold));
-  if(want&&!cupS.placed){cupS.placed=true;cupS.since=now;cupS.s=0;cupS.together=new Map();cupS.via=cupS.touchHold?'touch':'body';cupS.partner=opt.role==='g'?pairWith:'';audio.place();}
+  if(want&&!cupS.placed){cupS.placed=true;cupS.since=now;cupS.s=0;cupS.beats=0;cupS.together=new Map();cupS.via=cupS.touchHold?'touch':'body';cupS.partner=opt.role==='g'?pairWith:'';audio.place();}
   if(cupS.placed&&cupS.via==='touch'&&!cupS.touchHold)release(now);
   else if(!want&&cupS.placed){release(now);}
   if(!cupS.placed)return;
@@ -687,7 +691,7 @@ function release(now){
   const L=new Map();L.set(myEl,Math.min(1,held/20)*cupS.s);
   for(const [id,w] of cupS.together){const m=members.get(id);if(!m||!m.st)continue;const e=m.st.e;L.set(e,(L.get(e)||0)+Math.min(1,w/12));}
   const tot=[...L.values()].reduce((a,b)=>a+b,0)||1;
-  cupS.mark={t:Date.now(),d:cupS.s,L:[...L.entries()].sort((a,b)=>b[1]-a[1]).map(([e,w])=>[e,w/tot]),who:cupS.together.size};
+  cupS.mark={t:Date.now(),d:cupS.s,L:[...L.entries()].sort((a,b)=>b[1]-a[1]).map(([e,w])=>[e,w/tot]),who:cupS.together.size,beats:cupS.beats||0};
   audio.pop(cupS.s);torch.until=0;cupS.s=0;
 }
 
@@ -695,7 +699,7 @@ function release(now){
 let stT=0,lastSt='';
 function shareState(now){
   const lv=cup.levels||[0,0,0,0,0];
-  const o={e:myEl,p:cupS.placed?1:0,s:Math.round(cupS.s*100),l:Math.round(Math.max(...lv)*100),r:opt.role,pt:opt.role==='g'?pairWith:''};
+  const o={e:myEl,p:cupS.placed?1:0,s:Math.round(cupS.s*100),l:Math.round(Math.max(...lv)*100),r:opt.role,pt:opt.role==='g'?pairWith:'',hr:pulse.state==='reading'?pulse.bpm:0};
   if(cupS.mark&&Date.now()-cupS.mark.t<MARK_MS)o.mk={a:Date.now()-cupS.mark.t,d:+cupS.mark.d.toFixed(2),L:cupS.mark.L.map(x=>[x[0],+x[1].toFixed(2)])};
   const js=JSON.stringify(o),slow=now-stT>1200;
   if((js!==lastSt&&now-stT>200)||slow){net.send('S'+js);lastSt=js;stT=now;}
@@ -754,6 +758,10 @@ const audio={ctx:null,out:null,pull:null,drone:null,
   pullTo(s,el,on){if(!this.ctx)return;const t=this.ctx.currentTime,f=FREQ[el]/2*(1-0.14*s);
     this.pull.o.frequency.setTargetAtTime(f,t,0.3);this.pull.o2.frequency.setTargetAtTime(f/2,t,0.3);
     this.pull.g.gain.setTargetAtTime(opt.sound&&on?0.03+0.09*s:0,t,on?0.4:0.08);},
+  thump(){if(!this.ctx||!opt.sound)return;const t=this.ctx.currentTime,o=this.ctx.createOscillator(),g=this.ctx.createGain();o.frequency.setValueAtTime(62,t);o.frequency.exponentialRampToValueAtTime(42,t+0.16);
+    g.gain.setValueAtTime(0,t);g.gain.linearRampToValueAtTime(0.22,t+0.012);g.gain.exponentialRampToValueAtTime(0.0001,t+0.2);o.connect(g);g.connect(this.out);o.start(t);o.stop(t+0.22);},
+  tick(el){if(!this.ctx||!opt.sound)return;const t=this.ctx.currentTime,o=this.ctx.createOscillator(),g=this.ctx.createGain();o.frequency.value=FREQ[el]*2;
+    g.gain.setValueAtTime(0,t);g.gain.linearRampToValueAtTime(0.012,t+0.005);g.gain.exponentialRampToValueAtTime(0.0001,t+0.08);o.connect(g);g.connect(this.out);o.start(t);o.stop(t+0.1);},
   place(){if(!this.ctx||!opt.sound)return;this.noise(0.12,900,250,0.05);},
   pop(s){if(!this.ctx||!opt.sound)return;this.noise(0.28,1800,220,0.12+0.2*s);},
   noise(dur,f0,f1,vol){const t=this.ctx.currentTime,n=Math.floor(this.ctx.sampleRate*dur),b=this.ctx.createBuffer(1,n,this.ctx.sampleRate),d=b.getChannelData(0);for(let i=0;i<n;i++)d[i]=Math.random()*2-1;
@@ -765,14 +773,98 @@ const audio={ctx:null,out:null,pull:null,drone:null,
     if(this.drone&&this.drone.el===el)return;this.tune(null);if(!opt.sound)return;
     const o=this.ctx.createOscillator(),g=this.ctx.createGain();o.frequency.value=FREQ[el];g.gain.value=0;g.gain.setTargetAtTime(0.035,t,0.8);o.connect(g);g.connect(this.out);o.start();this.drone={o,g,el};}
 };
-const torch={track:null,on:false,last:0,until:0,ok:false,
-  async init(){try{const s=await navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:'environment'}},audio:false});const tr=s.getVideoTracks()[0];this.track=tr;
-      const v=document.createElement('video');v.muted=true;v.playsInline=true;v.setAttribute('playsinline','');v.srcObject=s;v.style.cssText='position:fixed;width:1px;height:1px;opacity:0;pointer-events:none';document.body.appendChild(v);v.play().catch(()=>{});
-      await tr.applyConstraints({advanced:[{torch:false}]});this.ok=true;$('s-torch-note').textContent='Ready.';return true;
-    }catch(e){$('s-torch-note').textContent='The flashlight could not be used on this phone ('+(e&&e.name||'error')+').';this.ok=false;return false;}},
-  set(on,now){if(!this.ok||on===this.on||now-this.last<900)return;this.on=on;this.last=now;this.track.applyConstraints({advanced:[{torch:on}]}).catch(()=>{this.ok=false;});},
-  stop(){if(this.track){try{this.track.applyConstraints({advanced:[{torch:false}]});this.track.stop();}catch(e){}}this.track=null;this.ok=false;this.on=false;}
+// the back camera, shared by the flashlight and the pulse
+const cam={track:null,video:null,opening:null,err:'',
+  open(){
+    if(this.track&&this.track.readyState==='live')return Promise.resolve(true);
+    if(this.opening)return this.opening;
+    this.opening=(async()=>{try{
+        const s=await navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:'environment'},width:{ideal:160},height:{ideal:120},frameRate:{ideal:30}},audio:false});
+        this.track=s.getVideoTracks()[0];const v=document.createElement('video');v.muted=true;v.playsInline=true;v.setAttribute('playsinline','');v.srcObject=s;
+        v.style.cssText='position:fixed;left:0;top:0;width:2px;height:2px;opacity:0;pointer-events:none';document.body.appendChild(v);await v.play().catch(()=>{});this.video=v;return true;
+      }catch(e){this.err=(e&&e.name)||'error';return false;}finally{this.opening=null;}})();
+    return this.opening;},
+  light(on){if(!this.track)return Promise.resolve(false);return this.track.applyConstraints({advanced:[{torch:on}]}).then(()=>true,()=>false);},
+  close(){if(this.track){try{this.track.applyConstraints({advanced:[{torch:false}]}).catch(()=>{});this.track.stop();}catch(e){}}if(this.video)this.video.remove();this.track=null;this.video=null;}
 };
+const torch={on:false,last:0,until:0,ok:false,
+  async init(){const ok=await cam.open();if(!ok){$('s-torch-note').textContent='The camera could not be used on this phone ('+cam.err+').';this.ok=false;return false;}
+    this.ok=await cam.light(pulse.on);$('s-torch-note').textContent=this.ok?(pulse.on?'Used by the pulse while it reads.':'Ready.'):'This phone does not let web pages switch its flashlight.';return this.ok;},
+  set(on,now){if(!this.ok||pulse.on||on===this.on||now-this.last<900)return;this.on=on;this.last=now;cam.light(on).then(r=>{if(!r)this.ok=false;});},
+  stop(){this.ok=false;this.on=false;if(pulse.on)cam.light(true);else cam.close();}
+};
+// the pulse: a fingertip over the back camera and flashlight. Each beat fills the skin with blood and darkens it a little;
+// the page finds those dips in the colour, here on the phone. Only the beat (and its rate) is sent to the group.
+const pulse={on:false,state:'off',bpm:0,ivals:[],buf:[],z:[],amp:0,last:0,beatAt:0,count:0,cv:null,cx:null,lit:false,raw:[0,0,0],
+  async start(){
+    const ok=await cam.open();if(!ok){$('s-pulse-note').textContent='The camera could not be used ('+cam.err+').';return false;}
+    this.lit=await cam.light(true);
+    $('s-pulse-note').textContent=this.lit?'Rest a fingertip lightly over the back camera and the flashlight.':'No flashlight here: hold the back camera toward a lamp or window and rest a fingertip over it.';
+    this.cv=document.createElement('canvas');this.cv.width=24;this.cv.height=18;this.cx=this.cv.getContext('2d',{willReadFrequently:true});
+    this.on=true;this.state='nofinger';this.tick();return true;},
+  stop(){this.on=false;this.state='off';this.bpm=0;if(torch.ok)cam.light(false);else cam.close();},
+  tick(){
+    if(!this.on)return;const v=cam.video;
+    if(v&&v.readyState>=2&&v.videoWidth){try{this.cx.drawImage(v,0,0,24,18);const d=this.cx.getImageData(4,3,16,12).data;let r=0,g=0,b=0;const n=d.length/4;
+      for(let i=0;i<d.length;i+=4){r+=d[i];g+=d[i+1];b+=d[i+2];}this.sample(performance.now(),r/n,g/n,b/n);}catch(e){}}
+    if(v&&v.requestVideoFrameCallback)v.requestVideoFrameCallback(()=>this.tick());else setTimeout(()=>this.tick(),33);
+  },
+  sample(t,r,g,b){
+    this.raw=[r,g,b];
+    const covered=r>45&&r>1.5*g&&r>1.5*b;   // a fingertip over the lens: the picture turns deep red
+    if(!covered){if(this.state!=='nofinger'){this.state='nofinger';this.bpm=0;}this.buf=[];this.z=[];this.ivals=[];this.amp=0;return;}
+    if(this.state==='nofinger')this.state='finding';
+    const v=r>245?g:r;
+    this.buf.push([t,v]);while(this.buf.length&&t-this.buf[0][0]>1200)this.buf.shift();
+    if(this.buf.length<10)return;
+    let m=0;for(const q of this.buf)m+=q[1];m/=this.buf.length;
+    this.z.push([t,m-v]);if(this.z.length>5)this.z.shift();   // positive when the skin darkens
+    if(this.z.length<5)return;
+    const sm=i=>(this.z[i-1][1]+this.z[i][1]+this.z[i+1][1])/3;
+    const a=sm(1),c=sm(2),d=sm(3);
+    this.amp=Math.max(this.amp*0.992,Math.abs(c));
+    if(c>a&&c>=d&&c>0.35*this.amp&&this.z[2][0]-this.last>330)this.beat(this.z[2][0]);
+  },
+  beat(t){
+    const iv=t-this.last;this.last=t;
+    if(iv>330&&iv<1700){this.ivals.push(iv);if(this.ivals.length>8)this.ivals.shift();}
+    if(this.ivals.length<4)return;
+    const sorted=this.ivals.slice().sort((x,y)=>x-y),med=sorted[sorted.length>>1];
+    const dev=this.ivals.reduce((s,x)=>s+Math.abs(x-med),0)/this.ivals.length;
+    if(Math.abs(iv-med)>med*0.35)return;              // a stray dip, not a beat
+    this.bpm=Math.round(60000/med);this.state=dev/med<0.2?'reading':'finding';
+    if(this.state==='reading')myBeat();
+  }
+};
+// beats that land together: the pulses meet
+const meet={count:0,mine:0,last:new Map(),ripples:[]};
+function beatTimes(){const out=[];if(pulse.state==='reading'&&pulse.beatAt)out.push([ME,pulse.beatAt,myEl]);
+  for(const [id,m] of others())if(m.beatAt&&m.bpm)out.push([id,m.beatAt,(m.st&&m.st.e)||0]);return out;}
+function meetCheck(id,t){
+  const now=Date.now();
+  for(const [j,tj,ej] of beatTimes()){if(j===id||Math.abs(t-tj)>180)continue;
+    const key=[id,j].sort().join('|');if(now-(meet.last.get(key)||0)<400)continue;meet.last.set(key,now);
+    meet.count++;if(id===ME||j===ME)meet.mine++;
+    const ei=id===ME?myEl:(((members.get(id)||{}).st||{}).e||0);
+    meet.ripples.push({t:now,a:ELRGB[ei],b:ELRGB[ej]});if(meet.ripples.length>8)meet.ripples.shift();
+    audio.bell(ei,0.35);if(opt.vib&&canVibrate){try{navigator.vibrate(25);}catch(e){}}}
+}
+function myBeat(){
+  pulse.beatAt=Date.now();pulse.count++;if(cupS.placed)cupS.beats=(cupS.beats||0)+1;
+  net.send('B'+JSON.stringify({b:pulse.bpm}));audio.thump();meetCheck(ME,pulse.beatAt);
+}
+const beatK=t0=>{const a=Date.now()-t0;return t0&&a>=0&&a<900?Math.exp(-a/230):0;};
+function pulseLine(){
+  const hrs=[];if(pulse.state==='reading')hrs.push(pulse.bpm);for(const [,m] of others())if(m.st&&m.st.hr)hrs.push(m.st.hr);
+  const close=hrs.length>1&&Math.max(...hrs)-Math.min(...hrs)<=4;
+  let mine='';
+  if(pulse.on){mine=pulse.state==='nofinger'?'fingertip on the back camera for your pulse':pulse.state==='finding'?'finding your pulse, keep still':'pulse '+pulse.bpm;}
+  const parts=[];if(mine)parts.push(mine);
+  const theirs=hrs.slice(pulse.state==='reading'?1:0);
+  if(close&&pulse.state==='reading')parts.push('close to '+theirs.join(' and '));else if(theirs.length)parts.push('others '+theirs.join(', '));
+  if(meet.count)parts.push('met '+meet.count);
+  return parts.join('  ·  ');
+}
 let wakeLock=null;
 async function keepAwake(){try{if('wakeLock' in navigator&&document.visibilityState==='visible')wakeLock=await navigator.wakeLock.request('screen');}catch(e){}}
 document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible'&&running)keepAwake();});
@@ -792,7 +884,7 @@ function ledRGB(c,k){const m=255/C.LIMIT*(k||1);return [Math.min(255,c[0]*m),Mat
 function circle(){
   const r=roster(),out=[],os=r.filter(id=>id!==ME),no=os.length;
   r.forEach((id,i)=>{const j=os.indexOf(id);const a=id===ME?Math.PI/2:(no===1?-Math.PI/2:-Math.PI+Math.PI*0.18+(Math.PI*0.64)*j/(no-1));
-    const st=id===ME?{e:myEl,p:cupS.placed,s:cupS.s,l:Math.max(...(cup.levels||[0])),r:opt.role,pt:opt.role==='g'?pairWith:'',mk:cupS.mark}:((members.get(id)||{}).st||{});
+    const mm=members.get(id)||{};const st=id===ME?{e:myEl,p:cupS.placed,s:cupS.s,l:Math.max(...(cup.levels||[0])),r:opt.role,pt:opt.role==='g'?pairWith:'',mk:cupS.mark,hr:pulse.state==='reading'?pulse.bpm:0,beatAt:pulse.state==='reading'?pulse.beatAt:0}:Object.assign({},mm.st||{},{beatAt:mm.bpm?mm.beatAt:0});
     out.push({id,a,st,seat:cupIdOf(id)});});
   return out;
 }
@@ -857,6 +949,7 @@ function draw(now){
     ctx.strokeStyle=g;ctx.lineWidth=lk.R*(0.04+0.1*lv);ctx.lineCap='round';ctx.beginPath();ctx.moveTo(ox,oy);ctx.lineTo(lk.x+Math.cos(p.a)*lk.R*0.15,lk.y+Math.sin(p.a)*lk.R*0.15);ctx.stroke();});
   // what you make together: the traces
   ctx.globalCompositeOperation='source-over';
+  drawBeats(ring,lk,p=>p.id===ME?[lk.x,lk.y+lk.R]:[lk.x+Math.cos(p.a)*lk.R*1.25,lk.y+Math.sin(p.a)*lk.R*1.25]);
   drawTraces(ring,Date.now());
   // pairs: a soft line from the giver to the one they cup
   ring.forEach(p=>{if(p.st.r!=='g'||!p.st.pt)return;const q=ring.find(x=>x.id===p.st.pt);if(!q)return;
@@ -866,11 +959,11 @@ function draw(now){
   ring.forEach(p=>{if(p.id===ME)return;const st=p.st,rr=lk.R*1.42,x=lk.x+Math.cos(p.a)*rr,y=lk.y+Math.sin(p.a)*rr,cr=lk.R*0.17,col=ELRGB[st.e||0];
     if(st.mk)drawMark(x,y,cr*2.3,st.mk,1);
     ctx.beginPath();ctx.arc(x,y,cr,0,2*Math.PI);ctx.fillStyle='rgba(16,18,18,0.9)';ctx.fill();
-    ctx.lineWidth=2;ctx.strokeStyle=rgba(col,st.r==='r'?0.35:0.8);ctx.stroke();
+    ctx.lineWidth=2+5*beatK(st.beatAt);ctx.strokeStyle=rgba(col,st.r==='r'?0.35:0.8);ctx.stroke();
     const lv=st.p?st.s:(st.l||0);if(lv>0.01){ctx.beginPath();ctx.arc(x,y,cr*0.82,-Math.PI/2,-Math.PI/2+2*Math.PI*lv);ctx.strokeStyle=rgba(col,0.95);ctx.lineWidth=cr*0.28;ctx.stroke();}
     ctx.fillStyle='#dfe3e0';ctx.font='500 12px "IBM Plex Sans",sans-serif';ctx.textAlign='center';ctx.textBaseline='top';
     const tag=('seat '+p.seat)+(st.r==='g'?' · gives':st.r==='r'?' · receives':'');ctx.fillText(tag,x,y+cr+5);
-    ctx.fillStyle='#9aa29e';ctx.fillText(st.p?'placed':EL_NAME[st.e||0],x,y+cr+20);});
+    ctx.fillStyle='#9aa29e';ctx.fillText((st.p?'placed':EL_NAME[st.e||0])+(st.hr?' · '+st.hr:''),x,y+cr+20);});
   // the moment, in words
   const cap=caption();ctx.fillStyle='#ecefec';ctx.font='400 '+Math.round(Math.min(21,W*0.052))+'px "Gowun Batang",Georgia,serif';ctx.textAlign='center';ctx.textBaseline='alphabetic';
   const cy=lk.y+lk.R+(opt.role==='g'?78:44);wrapText(cap[0],W/2,cy,W*0.86,26);
@@ -878,14 +971,14 @@ function draw(now){
   // your cup (or, for a receiver, what is happening under the cup on your skin)
   if(opt.role==='r')drawUnder(now);else drawCup(now);
   if(cupS.mark&&opt.role!=='r'){const age=Date.now()-cupS.mark.t;if(age<MARK_MS)drawMark(L.cup.x,L.cup.y,L.cup.R*1.45,cupS.mark,1);}
-  if(!net.ok){ctx.fillStyle='#e7a27c';ctx.font='500 13px "IBM Plex Mono",monospace';ctx.textAlign='center';ctx.fillText('connecting to the group',W/2,H-24);}
+  {const pl=net.ok?pulseLine():'connecting to the group';if(pl){ctx.fillStyle=net.ok?'#aab1ad':'#e7a27c';ctx.font='500 12.5px "IBM Plex Mono",monospace';ctx.textAlign='center';ctx.textBaseline='alphabetic';wrapText(pl,W/2,H-Math.max(20,H*0.03),W*0.92,16);}}
 }
 // PLACED: the phone is a glass cup seen from above. The skin inside draws up into rings and reddens as it pulls;
 // your light ring sits at the rim, the others sit around it, the shared traces are drawn on the skin
 function drawGlass(now){
   const bright=opt.bright,ring=circle(),s=cupS.s,t=Date.now();
   const tog=others().some(([,m])=>m.st&&(m.st.p||m.st.l>0.15));
-  const br=tog?0.8+0.2*breathAt(t):0.9+0.1*Math.sin(now/1400);
+  const br=(tog?0.8+0.2*breathAt(t):0.9+0.1*Math.sin(now/1400))*(1+0.28*beatK(pulse.beatAt));
   const cx=W/2,cy=H*0.44,Rc=Math.min(W*0.43,H*0.3);
   ctx.fillStyle='#000';ctx.fillRect(0,0,W,H);
   // the skin
@@ -898,6 +991,7 @@ function drawGlass(now){
   for(let i=1;i<=7;i++){const f=i/8,r=Rc*f*(1-0.28*s*(1-f));ctx.beginPath();ctx.arc(cx,cy,r,0,2*Math.PI);
     ctx.strokeStyle=rgba(mix([255,215,205],el,0.25),(0.05+0.22*s)*(1-f*0.5)*bright);ctx.lineWidth=1.2;ctx.stroke();}
   ctx.restore();
+  drawBeats(ring,{x:cx,y:cy,R:Rc*0.98},p=>p.id===ME?[cx,cy]:[cx+Math.cos(p.a)*Rc*1.3,cy+Math.sin(p.a)*Rc*1.3]);
   drawTraces(ring,t,{x:cx,y:cy,R:Rc*0.92},0.8);
   // the glass rim
   ctx.beginPath();ctx.arc(cx,cy,Rc,0,2*Math.PI);ctx.strokeStyle='rgba(235,240,238,0.4)';ctx.lineWidth=3;ctx.stroke();
@@ -910,14 +1004,23 @@ function drawGlass(now){
   // the others around the cup: their colour and how deep their pull is
   ring.forEach(p=>{if(p.id===ME)return;const st=p.st,a=p.a,x=cx+Math.cos(a)*Rc*1.3,y=cy+Math.sin(a)*Rc*1.3,r=Rc*0.11,col=ELRGB[st.e||0];
     if(st.mk)drawMark(x,y,r*2.4,st.mk,1);
-    ctx.beginPath();ctx.arc(x,y,r,0,2*Math.PI);ctx.fillStyle='rgba(16,18,18,0.9)';ctx.fill();ctx.strokeStyle=rgba(col,0.8);ctx.lineWidth=2;ctx.stroke();
+    ctx.beginPath();ctx.arc(x,y,r,0,2*Math.PI);ctx.fillStyle='rgba(16,18,18,0.9)';ctx.fill();ctx.strokeStyle=rgba(col,0.8);ctx.lineWidth=2+5*beatK(st.beatAt);ctx.stroke();
     const lv=st.p?st.s:(st.l||0);if(lv>0.01){ctx.beginPath();ctx.arc(x,y,r*0.8,-Math.PI/2,-Math.PI/2+2*Math.PI*lv);ctx.strokeStyle=rgba(col,0.95);ctx.lineWidth=r*0.3;ctx.stroke();}
-    ctx.fillStyle='#c9cfcb';ctx.font='500 11.5px "IBM Plex Sans",sans-serif';ctx.textAlign='center';ctx.textBaseline='top';ctx.fillText('seat '+p.seat,x,y+r+4);});
+    ctx.fillStyle='#c9cfcb';ctx.font='500 11.5px "IBM Plex Sans",sans-serif';ctx.textAlign='center';ctx.textBaseline='top';ctx.fillText('seat '+p.seat+(st.hr?' · '+st.hr:''),x,y+r+4);});
   // words
   const cap=caption();ctx.textAlign='center';ctx.textBaseline='alphabetic';
   ctx.fillStyle='#ecefec';ctx.font='400 '+Math.round(Math.min(22,W*0.055))+'px "Gowun Batang",Georgia,serif';wrapText(cap[0],W/2,cy+Rc*1.55+10,W*0.86,27);
   ctx.fillStyle='#9aa29e';ctx.font='400 13.5px "IBM Plex Sans",sans-serif';wrapText(cap[1],W/2,cy+Rc*1.55+38,W*0.86,19);
   ctx.fillStyle='#7d8580';ctx.font='500 12px "IBM Plex Mono",monospace';ctx.fillText('pull '+Math.round(s*100)+'%  ·  lift the phone to release',W/2,H-Math.max(22,H*0.035));
+  {const pl=pulseLine();if(pl){ctx.fillStyle='#aab1ad';ctx.fillText(pl,W/2,H-Math.max(22,H*0.035)-22);}}
+}
+function drawBeats(ring,lk,origin){
+  const now=Date.now();ctx.save();ctx.beginPath();ctx.arc(lk.x,lk.y,lk.R,0,2*Math.PI);ctx.clip();ctx.globalCompositeOperation='lighter';
+  ring.forEach(p=>{const t0=p.st.beatAt;if(!t0)return;const age=(now-t0)/1100;if(age<0||age>=1)return;const [ox,oy]=origin(p);
+    ctx.beginPath();ctx.arc(ox,oy,lk.R*(0.12+1.0*age),0,2*Math.PI);ctx.strokeStyle=rgba(ELRGB[p.st.e||0],0.55*(1-age));ctx.lineWidth=2+3*(1-age);ctx.stroke();});
+  meet.ripples.forEach(r=>{const age=(now-r.t)/1600;if(age<0||age>=1)return;
+    ctx.beginPath();ctx.arc(lk.x,lk.y,lk.R*(0.22+0.78*age),0,2*Math.PI);ctx.strokeStyle=rgba(mix(mix(r.a,r.b,0.5),[255,245,230],0.45),0.8*(1-age));ctx.lineWidth=2+3*(1-age);ctx.stroke();});
+  ctx.restore();ctx.globalCompositeOperation='source-over';
 }
 function wrapText(t,x,y,maxW,lh){const words=t.split(' ');let line='',yy=y;for(const w of words){const test=line?line+' '+w:w;if(ctx.measureText(test).width>maxW&&line){ctx.fillText(line,x,yy);line=w;yy+=lh;}else line=test;}if(line)ctx.fillText(line,x,yy);}
 function drawCup(now){
@@ -926,6 +1029,7 @@ function drawCup(now){
   for(let i=0;i<12;i++){const c=cup.ring[i];if(!(c[0]+c[1]+c[2]))continue;const a0=(15+30*i-14)*Math.PI/180-Math.PI/2,a1=(15+30*i+14)*Math.PI/180-Math.PI/2;
     ctx.beginPath();ctx.arc(x,y,R*1.02,a0,a1);ctx.strokeStyle=rgba(ledRGB(c,opt.bright),1);ctx.lineWidth=R*0.12;ctx.stroke();}
   ctx.beginPath();ctx.arc(x,y,R*0.9,0,2*Math.PI);ctx.fillStyle=cupS.placed?rgba(mix([20,10,16],BRUISE,cupS.s*0.6),1):'rgba(18,20,20,1)';ctx.fill();
+  {const k=beatK(pulse.beatAt);if(k>0){const g=ctx.createRadialGradient(x,y,0,x,y,R*0.9);g.addColorStop(0,rgba(ELRGB[myEl],0.55*k));g.addColorStop(1,rgba(ELRGB[myEl],0));ctx.fillStyle=g;ctx.beginPath();ctx.arc(x,y,R*0.9,0,2*Math.PI);ctx.fill();}}
   if(cupS.placed){ctx.beginPath();ctx.arc(x,y,R*0.9,-Math.PI/2,-Math.PI/2+2*Math.PI*cupS.s);ctx.strokeStyle=rgba(ELRGB[myEl],0.9);ctx.lineWidth=4;ctx.stroke();}
   const t=cup.target||[0,0,0,0,0];
   L.pads.forEach((p,i)=>{const r=R*0.21;ctx.beginPath();ctx.arc(p.x,p.y,r,0,2*Math.PI);
@@ -953,7 +1057,7 @@ function caption(){
     if(s.mk)return ['The mark on your skin.','It holds the colours of everyone you were held with. It fades in 40 s.'];
     return ['Your giver is getting ready.','Seat '+cupIdOf(g[0])+' will place the cup.'];
   }
-  if(cupS.mark&&Date.now()-cupS.mark.t<MARK_MS)return ['Your mark.',cupS.mark.who?'Made with '+cupS.mark.who+(cupS.mark.who===1?' other cup. ':' other cups. ')+'It fades in 40 s.':'You held alone this time. It fades in 40 s.'];
+  if(cupS.mark&&Date.now()-cupS.mark.t<MARK_MS)return ['Your mark.',(cupS.mark.beats>3?'You held for '+cupS.mark.beats+' heartbeats. ':'')+(cupS.mark.who?'Made with '+cupS.mark.who+(cupS.mark.who===1?' other cup. ':' other cups. ')+'It fades in 40 s.':'You held alone this time. It fades in 40 s.')];
   if(cupS.placed)return [cupS.s<0.4?'Hold still. The pull is building.':'Deep now. Breathe with the others.',moment(st)];
   if(opt.role==='g'&&!pairWith)return ['Choose who you will cup.','Then lay your phone screen-up on their palm or forearm.'];
   return [opt.motion?'Lay the phone screen-up on '+(opt.role==='g'?'their':'your')+' palm, forearm or thigh.':'Touch and hold the cup to place it.',moment(st)||'Tap a pad first to choose your element.'];
@@ -978,7 +1082,7 @@ function frame(t){
   if(now-beatT>2000){net.beat();beatT=now;}
   if(now-seatT>400){updateSeats();renderPairs();seatT=now;}
   shareState(t);outputs(now);draw(t);
-  if(opt.debug)$('debug').textContent=(host.line||'centre: starting')+'\nrelay '+(net.ok?'connected':'connecting')+' · sent '+net.sent+' · heard '+net.got+'\ncup '+(cupS.placed?'placed ('+cupS.via+') pull '+Math.round(cupS.s*100)+'%':'not placed')+' · tremor '+cupS.motion.toFixed(3)+(cupS.flatUp?' · flat, screen up':' · not flat');
+  if(opt.debug)$('debug').textContent=(host.line||'centre: starting')+'\nrelay '+(net.ok?'connected':'connecting')+' · sent '+net.sent+' · heard '+net.got+'\ncup '+(cupS.placed?'placed ('+cupS.via+') pull '+Math.round(cupS.s*100)+'%':'not placed')+' · tremor '+cupS.motion.toFixed(3)+(cupS.flatUp?' · flat, screen up':' · not flat')+'\npulse '+pulse.state+(pulse.bpm?' '+pulse.bpm:'')+' · camera rgb '+pulse.raw.map(v=>Math.round(v)).join('/')+(pulse.lit?' · lit':'');
   requestAnimationFrame(frame);
 }
 function outputs(now){
@@ -1010,13 +1114,14 @@ document.querySelectorAll('#roles button').forEach(b=>b.addEventListener('click'
 $('go').addEventListener('click',async()=>{
   const g=clean(gIn.value);if(!g){gIn.focus();return;}group=g;
   opt.role=opt.mode==='pair'?document.querySelector('#roles button[aria-pressed="true"]').dataset.r:'s';
-  opt.sound=$('o-sound').checked;opt.vib=$('o-vib').checked;opt.torch=$('o-torch').checked;opt.motion=$('o-motion').checked;
+  opt.sound=$('o-sound').checked;opt.vib=$('o-vib').checked;opt.torch=$('o-torch').checked;opt.motion=$('o-motion').checked;opt.pulse=$('o-pulse').checked;
   audio.init();audio.resume();
   const motionP=opt.motion?enableMotion():Promise.resolve(false);
   try{const el=document.documentElement;if(el.requestFullscreen&&/Android/i.test(navigator.userAgent))el.requestFullscreen().catch(()=>{});}catch(e){}
   $('go').disabled=true;$('go').textContent='Starting';
+  const pulseP=opt.pulse?pulse.start():Promise.resolve(false);
   const torchP=opt.torch?torch.init():Promise.resolve(false);keepAwake();
-  opt.motion=await motionP;opt.torch=(await torchP)&&opt.torch;
+  opt.motion=await motionP;opt.pulse=await pulseP;opt.torch=(await torchP)&&opt.torch;
   if(!canVibrate)$('s-vib-note').textContent='This phone does not offer vibration to web pages (iPhone).';
   joinT=Date.now();makeFirmware();net.start(group);
   history.replaceState(null,'','?g='+group);
@@ -1024,7 +1129,7 @@ $('go').addEventListener('click',async()=>{
   syncSettings();requestAnimationFrame(frame);
 });
 function syncSettings(){
-  $('s-sound').checked=opt.sound;$('s-vib').checked=opt.vib;$('s-torch').checked=opt.torch;$('s-motion').checked=opt.motion;$('s-debug').checked=opt.debug;
+  $('s-sound').checked=opt.sound;$('s-vib').checked=opt.vib;$('s-torch').checked=opt.torch;$('s-pulse').checked=pulse.on;$('s-motion').checked=opt.motion;$('s-debug').checked=opt.debug;
   const url=location.origin+location.pathname+'?g='+group;$('s-link').textContent=url;
   const q=$('qr');q.innerHTML='';try{new QRCode(q,{text:url,width:180,height:180,correctLevel:QRCode.CorrectLevel.M});}catch(e){q.hidden=true;}
 }
@@ -1033,16 +1138,17 @@ $('s-close').addEventListener('click',()=>$('settings').hidden=true);
 $('settings').addEventListener('click',e=>{if(e.target.id==='settings')$('settings').hidden=true;});
 $('s-bright').addEventListener('input',e=>{opt.bright=+e.target.value;$('s-bright-o').textContent=Math.round(opt.bright*100)+'%';});
 $('s-str').addEventListener('input',e=>{opt.str=+e.target.value;$('s-str-o').textContent=opt.str.toFixed(2);});
+$('s-pulse').addEventListener('change',async e=>{if(e.target.checked){opt.pulse=await pulse.start();e.target.checked=opt.pulse;}else{opt.pulse=false;pulse.stop();}});
 $('s-skin').addEventListener('input',e=>{opt.skin=+e.target.value;$('s-skin-o').textContent=opt.skin.toFixed(3);});
 $('s-debug').addEventListener('change',e=>{opt.debug=e.target.checked;$('debug').hidden=!opt.debug;});
 $('s-sound').addEventListener('change',e=>{opt.sound=e.target.checked;audio.resume();if(!opt.sound)audio.tune(null);});
 $('s-vib').addEventListener('change',e=>opt.vib=e.target.checked);
 $('s-torch').addEventListener('change',async e=>{if(e.target.checked){opt.torch=await torch.init();e.target.checked=opt.torch;}else{opt.torch=false;torch.stop();}});
 $('s-motion').addEventListener('change',async e=>{if(e.target.checked){opt.motion=await enableMotion();e.target.checked=opt.motion;}else{opt.motion=false;window.removeEventListener('deviceorientation',onOrient);window.removeEventListener('devicemotion',onMotion);cupS.flatUp=false;}});
-$('s-leave').addEventListener('click',()=>{running=false;net.stop();torch.stop();audio.tune(null);audio.pullTo(0,0,false);members.clear();pointers.clear();cupS.placed=false;cupS.touchHold=false;
+$('s-leave').addEventListener('click',()=>{running=false;net.stop();pulse.stop();torch.stop();cam.close();meet.count=0;meet.mine=0;meet.ripples=[];audio.tune(null);audio.pullTo(0,0,false);members.clear();pointers.clear();cupS.placed=false;cupS.touchHold=false;
   $('settings').hidden=true;$('bar').hidden=true;$('pairs').hidden=true;$('debug').hidden=true;$('start').hidden=false;$('go').disabled=false;$('go').textContent='Start';ctx.clearRect(0,0,W,H);});
 window.addEventListener('pagehide',()=>net.stop());
-window.CircCup={get cup(){return cup;},get centre(){return centre;},roster,net,cupS,opt,members,setPair:id=>{pairWith=id;},get myEl(){return myEl;},setEl:e=>{myEl=e;elChosen=true;},ME};
+window.CircCup={pulse,meet,get cup(){return cup;},get centre(){return centre;},roster,net,cupS,opt,members,setPair:id=>{pairWith=id;},get myEl(){return myEl;},setEl:e=>{myEl=e;elChosen=true;},ME};
 })();
 </script>
 </body>
