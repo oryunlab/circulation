@@ -701,7 +701,7 @@ const pulse={on:false,state:'off',bpm:0,ivals:[],buf:[],z:[],amp:0,last:0,beatAt
     this.lit=await cam.light(true);
     $('s-pulse-note').textContent=this.lit?'Rest a fingertip lightly over the back camera and the flashlight.':'No flashlight here: hold the back camera toward a lamp or window and rest a fingertip over it.';
     this.cv=document.createElement('canvas');this.cv.width=24;this.cv.height=18;this.cx=this.cv.getContext('2d',{willReadFrequently:true});
-    this.on=true;this.state='nofinger';this.tick();return true;},
+    this.on=true;this.state='nofinger';this.f=[];this.slow=null;this.q=0;this.tick();return true;},
   stop(){this.on=false;this.state='off';this.bpm=0;if(torch.ok)cam.light(false);else cam.close();},
   tick(){
     if(!this.on)return;const v=cam.video;
@@ -712,28 +712,43 @@ const pulse={on:false,state:'off',bpm:0,ivals:[],buf:[],z:[],amp:0,last:0,beatAt
   sample(t,r,g,b){
     this.raw=[r,g,b];
     const covered=r>45&&r>1.5*g&&r>1.5*b;   // a fingertip over the lens: the picture turns deep red
-    if(!covered){if(this.state!=='nofinger'){this.state='nofinger';this.bpm=0;}this.buf=[];this.z=[];this.ivals=[];this.amp=0;return;}
-    if(this.state==='nofinger')this.state='finding';
-    const v=r>245?g:r;
-    this.buf.push([t,v]);while(this.buf.length&&t-this.buf[0][0]>1200)this.buf.shift();
-    if(this.buf.length<10)return;
-    let m=0;for(const q of this.buf)m+=q[1];m/=this.buf.length;
-    this.z.push([t,m-v]);if(this.z.length>5)this.z.shift();   // positive when the skin darkens
-    if(this.z.length<5)return;
-    const sm=i=>(this.z[i-1][1]+this.z[i][1]+this.z[i+1][1])/3;
-    const a=sm(1),c=sm(2),d=sm(3);
-    this.amp=Math.max(this.amp*0.992,Math.abs(c));
-    if(c>a&&c>=d&&c>0.35*this.amp&&this.z[2][0]-this.last>330)this.beat(this.z[2][0]);
+    if(!covered){if(this.state!=='nofinger'){this.state='nofinger';this.bpm=0;this.q=0;}this.f=[];this.slow=null;this.fast=0;this.amp=0;this.lastT=0;return;}
+    if(this.state==='nofinger'){this.state='finding';this.since=t;this.f=[];}
+    // the red channel, or green if the flashlight has maxed out the red
+    const ch=r<250?0:(g>8?1:0),v=ch?g:r;
+    const dt=this.lastT?Math.min(200,t-this.lastT):33;this.lastT=t;
+    if(this.slow===null||this.slow===undefined||ch!==this.ch){this.slow=v;this.fast=0;this.ch=ch;}   // a fresh start when the colour channel changes
+    this.slow+=(v-this.slow)*(1-Math.exp(-dt/450));    // the slow drift: pressure, the camera adjusting itself
+    const hp=v-this.slow;
+    this.fast+=(hp-this.fast)*(1-Math.exp(-dt/90));      // smooth away the flicker
+    const y=-this.fast;                                   // the skin darkens a little with each beat, so beats are peaks here
+    this.f.push([t,y]);while(this.f.length&&t-this.f[0][0]>8000)this.f.shift();
+    // each beat: a peak above a third of the recent swing, at least 0.33 s after the last one
+    const n=this.f.length;this.amp=Math.max(this.amp*0.995,Math.abs(y));
+    if(n>=3){const a=this.f[n-3][1],c=this.f[n-2][1],d=this.f[n-1][1];
+      if(c>a&&c>=d&&c>0.33*this.amp&&this.f[n-2][0]-this.last>330){this.last=this.f[n-2][0];if(this.state==='reading')myBeat();}}
+    // the rate: how the last 8 s repeats itself (autocorrelation), checked twice a second
+    if(t-(this.acT||0)>500&&t-this.since>4000){this.acT=t;this.rate();}
   },
-  beat(t){
-    const iv=t-this.last;this.last=t;
-    if(iv>330&&iv<1700){this.ivals.push(iv);if(this.ivals.length>8)this.ivals.shift();}
-    if(this.ivals.length<4)return;
-    const sorted=this.ivals.slice().sort((x,y)=>x-y),med=sorted[sorted.length>>1];
-    const dev=this.ivals.reduce((s,x)=>s+Math.abs(x-med),0)/this.ivals.length;
-    if(Math.abs(iv-med)>med*0.35)return;              // a stray dip, not a beat
-    this.bpm=Math.round(60000/med);this.state=dev/med<0.2?'reading':'finding';
-    if(this.state==='reading')myBeat();
+  rate(){
+    const f=this.f;if(f.length<60)return;
+    const T0=f[0][0],T1=f[f.length-1][0],step=1000/30,N=Math.floor((T1-T0)/step);if(N<90)return;
+    const x=new Float32Array(N);let j=0,mean=0;
+    for(let i=0;i<N;i++){const tt=T0+i*step;while(j<f.length-2&&f[j+1][0]<tt)j++;const p0=f[j],p1=f[j+1];const k=p1[0]>p0[0]?Math.max(0,Math.min(1,(tt-p0[0])/(p1[0]-p0[0]))):0;x[i]=p0[1]+(p1[1]-p0[1])*k;mean+=x[i];}
+    // take away what changes slower than a heartbeat: the average over each second
+    const d=new Float32Array(N);let e=0;
+    for(let i=0;i<N;i++){let a=0,c=0;for(let k=Math.max(0,i-15);k<=Math.min(N-1,i+15);k++){a+=x[k];c++;}d[i]=x[i]-a/c;e+=d[i]*d[i];}
+    if(e<=0)return;
+    const ac=[];
+    for(let lag=10;lag<=61;lag++){let sum=0;for(let i=0;i+lag<N;i++)sum+=d[i]*d[i+lag];ac[lag]=sum/e*N/(N-lag);}
+    // repeats: the peaks of the autocorrelation; take the shortest that is nearly as strong as the strongest
+    const peaks=[];for(let lag=11;lag<=60;lag++)if(ac[lag]>=ac[lag-1]&&ac[lag]>=ac[lag+1]&&ac[lag]>0)peaks.push(lag);
+    if(!peaks.length){this.q=0;if(this.state==='reading')this.state='finding';return;}
+    const best=Math.max(...peaks.map(l=>ac[l]));const bl=peaks.find(l=>ac[l]>=0.85*best);
+    const y0=ac[bl-1],y1=ac[bl],y2=ac[bl+1],den=y0-2*y1+y2,lag=den<0?bl+0.5*(y0-y2)/den:bl;
+    this.q=ac[bl];
+    if(this.q>0.35){const bpm=60000/(lag*step);this.bpm=this.bpm?Math.round(this.bpm*0.6+bpm*0.4):Math.round(bpm);this.state='reading';}
+    else if(this.q<0.2)this.state='finding';
   }
 };
 // beats that land together: the pulses meet
@@ -753,7 +768,7 @@ function myBeat(){
   pulse.beatAt=Date.now();pulse.count++;if(cupS.placed)cupS.beats=(cupS.beats||0)+1;
   // after eight steady beats on the lens the pulse reveals the element; later it can move if the pulse stays in another band
   if(cupS.placed){cupS.readBeats=(cupS.readBeats||0)+1;
-    if(cupS.readBeats>=8){const cand=elFromBpm(pulse.bpm,myEl);
+    if(cupS.readBeats>=8){const cand=elFromBpm(pulse.bpm,myEl);if(cupS.fallback&&cand!==myEl){myEl=cand;cupS.fallback=false;cupS.revealAt=Date.now();cupS.changed=true;audio.bell(cand,0.7);}
       if(myEl<0){myEl=cand;cupS.revealAt=Date.now();cupS.changed=false;audio.bell(cand,1);if(opt.vib&&canVibrate){try{navigator.vibrate([40,60,40]);}catch(e){}}}
       else if(cand!==myEl){cupS.candN=(cupS.cand===cand?(cupS.candN||0)+1:1);cupS.cand=cand;if(cupS.candN>=5){myEl=cand;cupS.revealAt=Date.now();cupS.changed=true;cupS.candN=0;audio.bell(cand,0.7);}}
       else cupS.candN=0;}}
@@ -852,9 +867,10 @@ function skinNow(){return camOK?(pulse.on&&pulse.state!=='nofinger'):cupS.touchH
 function cupStep(dt,now){
   const skin=skinNow();
   if(skin){cupS.skinT+=dt;cupS.offT=0;}else{cupS.offT+=dt;cupS.skinT=0;}
-  if(!cupS.placed&&skin&&(cupS.skinT>350||!camOK)){cupS.placed=true;cupS.since=now;cupS.s=0;cupS.beats=0;cupS.readBeats=0;cupS.candN=0;cupS.revealAt=0;myEl=camOK?-1:(myId-1)%5;cupS.together=new Map();audio.place();}
+  if(!cupS.placed&&skin&&(cupS.skinT>350||!camOK)){cupS.placed=true;cupS.since=now;cupS.s=0;cupS.beats=0;cupS.readBeats=0;cupS.candN=0;cupS.revealAt=0;cupS.fallback=false;myEl=camOK?-1:(myId-1)%5;cupS.together=new Map();audio.place();}
   if(cupS.placed&&!skin&&(cupS.offT>450||!camOK))release(now);
   if(!cupS.placed)return;
+  if(myEl<0&&camOK&&now-cupS.since>20000){myEl=pulse.bpm?elFromBpm(pulse.bpm,-1):(myId-1)%5;cupS.revealAt=Date.now();cupS.changed=false;cupS.fallback=true;audio.bell(myEl,0.8);}
   // the pull deepens while the cup stays on the skin (about 20 s to full)
   const d=dt/1000;cupS.s+=d*(1-cupS.s)/9;
   for(const [id,m] of others()){const st=m.st||{};const w=st.p?st.s:(st.l>0.15?st.l*0.6:0);if(w>0)cupS.together.set(id,(cupS.together.get(id)||0)+w*d);}
@@ -921,6 +937,7 @@ function draw(now){
   const cap=caption(),ty=cy+Rc*1.5+14;ctx.textAlign='center';ctx.textBaseline='alphabetic';
   ctx.fillStyle='#ecefec';ctx.font='400 '+Math.round(Math.min(23,W*0.058))+'px "Gowun Batang",Georgia,serif';const y2=wrapText(cap[0],W/2,ty,W*0.88,28);
   ctx.fillStyle='#a3aaa6';ctx.font='400 15px "IBM Plex Sans",sans-serif';wrapText(cap[1],W/2,y2+28,W*0.86,21);
+  if(camOK&&cupS.placed)drawWave(W/2-Math.min(W*0.38,170),H-Math.max(78,H*0.1)-64,Math.min(W*0.76,340),44);
   // what the phone notices: camera, skin, pulse
   const chips=camOK?[['camera',true],['skin',skinNow()],['pulse',pulse.state==='reading']]:[['touch',cupS.touchHold]];
   const cw=86,gap=8,tw=chips.length*cw+(chips.length-1)*gap,by=H-Math.max(78,H*0.1);
@@ -929,6 +946,17 @@ function draw(now){
     ctx.fillStyle=on?(myEl===3?'#111':'#0b0c0c'):'#8c938f';ctx.font='600 13px "IBM Plex Sans",sans-serif';ctx.textBaseline='middle';ctx.fillText(lab,x+cw/2,by+15);});
   ctx.textBaseline='alphabetic';ctx.fillStyle=net.ok?'#8c938f':'#e7a27c';ctx.font='500 12.5px "IBM Plex Mono",monospace';
   ctx.fillText(net.ok?infoLine():'connecting to the group',W/2,H-Math.max(24,H*0.032));
+}
+// what the camera sees: the light through your fingertip over the last 6 s; each rise is a heartbeat
+function drawWave(x0,y0,w,h){
+  const f=pulse.f||[];if(f.length<10)return;const now=f[f.length-1][0],span=6000;
+  const mags=f.filter(q=>now-q[0]<=span).map(q=>Math.abs(q[1])).sort((a,b)=>a-b);const m=Math.max(0.0001,mags[Math.floor(mags.length*0.9)]||0)*1.15;
+  ctx.beginPath();let started=false;
+  for(const q of f){const age=now-q[0];if(age>span)continue;const x=x0+w*(1-age/span),y=y0+h/2-Math.max(-1,Math.min(1,q[1]/m))*(h*0.45);started?ctx.lineTo(x,y):ctx.moveTo(x,y);started=true;}
+  ctx.strokeStyle=rgba(elCol(myEl),pulse.state==='reading'?0.95:0.45);ctx.lineWidth=2;ctx.lineJoin='round';ctx.stroke();
+  ctx.fillStyle='#7d8580';ctx.font='500 11.5px "IBM Plex Mono",monospace';ctx.textBaseline='alphabetic';
+  ctx.textAlign='left';ctx.fillText('the light through your fingertip',x0,y0-6);
+  ctx.textAlign='right';ctx.fillText(pulse.state==='reading'?pulse.bpm+' a minute':'listening',x0+w,y0-6);ctx.textAlign='center';
 }
 function wrapLines(t,maxW){const words=t.split(' '),out=[];let line='';for(const w of words){const test=line?line+' '+w:w;if(ctx.measureText(test).width>maxW&&line){out.push(line);line=w;}else line=test;}if(line)out.push(line);return out;}
 function wrapText(t,x,y,maxW,lh){const ls=wrapLines(t,maxW);ls.forEach((l,i)=>ctx.fillText(l,x,y+i*lh));return y+(ls.length-1)*lh;}
@@ -956,6 +984,7 @@ function caption(){
   if(cupS.mark&&!cupS.placed&&Date.now()-cupS.mark.t<MARK_MS){const m=cupS.mark;return ['Your mark.',(m.beats>3?'You held for '+m.beats+' heartbeats. ':'')+(m.who?'Made with '+m.who+(m.who===1?' other cup. ':' other cups. '):'You held alone this time. ')+'It fades in 40 s.'];}
   if(!cupS.placed)return ['Rest your index fingertip on the lens.','On the back of the phone, near the top. Press lightly, as when you feel a pulse. The cup will read you.'];
   if(myEl<0)return ['The cup is reading your pulse.',pulse.state==='reading'?'Keep still. '+Math.max(1,8-(cupS.readBeats||0))+' more heartbeats.':'Finding your pulse. Press lightly, keep still.'];
+  if(cupS.fallback&&cupS.revealAt&&Date.now()-cupS.revealAt<8000)return ['The cup could not hear your pulse clearly.','It gave you '+EL_NAME[myEl]+' '+EL_HANJA[myEl]+' for now. Press lighter and keep still, and it will keep listening.'];
   if(cupS.revealAt&&Date.now()-cupS.revealAt<6000)return [(cupS.changed?'Your pulse has moved to ':'Your pulse reads as ')+EL_NAME[myEl]+' '+EL_HANJA[myEl]+'.',EL_PULSE[myEl]+' '+pulse.bpm+' a minute. It may change as you settle.'];
   const head=cupS.s<0.4?'The cup is on your skin. Keep still.':'Deep now. Breathe with the others.';
   const sub=moment(st)||(pulse.state==='reading'?'Your pulse is '+pulse.bpm+'. Lift your finger to release the cup.':'Finding your pulse. Press lightly, keep still.');
@@ -983,7 +1012,7 @@ function frame(t){
   if(now-seatT>400){updateSeats();seatT=now;}
   shareState(t);outputs(now);draw(t);
   {const be=$('b-el'),txt=myEl>=0?EL_NAME[myEl]+' '+EL_HANJA[myEl]:(cupS.placed?'reading':'clear');if(be.textContent!==txt){be.textContent=txt;be.style.setProperty('--c',myEl>=0?ELCSS[myEl]:'rgb(205,214,218)');}}
-  if(opt.debug)$('debug').textContent=(host.line||'centre: starting')+'\nrelay '+(net.ok?'connected':'connecting')+' · sent '+net.sent+' · heard '+net.got+'\ncup '+(cupS.placed?'placed, pull '+Math.round(cupS.s*100)+'%':'not placed')+' · pulse '+pulse.state+(pulse.bpm?' '+pulse.bpm:'')+'\ncamera rgb '+pulse.raw.map(v=>Math.round(v)).join('/')+(pulse.lit?' · flashlight on':' · no flashlight');
+  if(opt.debug)$('debug').textContent=(host.line||'centre: starting')+'\nrelay '+(net.ok?'connected':'connecting')+' · sent '+net.sent+' · heard '+net.got+'\ncup '+(cupS.placed?'placed, pull '+Math.round(cupS.s*100)+'%':'not placed')+' · pulse '+pulse.state+(pulse.bpm?' '+pulse.bpm:'')+' · clarity '+(pulse.q||0).toFixed(2)+'\ncamera rgb '+pulse.raw.map(v=>Math.round(v)).join('/')+(pulse.lit?' · flashlight on':' · no flashlight');
   requestAnimationFrame(frame);
 }
 function outputs(now){
