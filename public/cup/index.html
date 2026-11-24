@@ -70,7 +70,7 @@ input[type=range]{width:100%;accent-color:var(--accent)}
 <canvas id="cv" aria-label="Your cup, a glass seen from above, with the others around it"></canvas>
 <div id="bar" hidden>
   <span class="who"><span id="b-group">group</span><br><small id="b-seat">joining</small></span>
-  <span class="right"><button class="pill" id="b-el">Element</button><button class="pill" id="b-set">Settings</button></span>
+  <span class="right"><span class="pill" id="b-el" role="status" aria-label="What the cup has read">clear</span><button class="pill" id="b-set">Settings</button></span>
 </div>
 <div id="debug" hidden></div>
 
@@ -80,7 +80,7 @@ input[type=range]{width:100%;accent-color:var(--accent)}
       <div class="label">Circulation · RMIT Vietnam</div>
       <h1>Your phone is a cup</h1>
     </div>
-    <p class="lede">Hold it like a cup and rest your index fingertip on the camera lens on the back. That is the cup on your skin. Keep it there: the pull deepens and your pulse appears. Lift your finger and the mark appears, made with everyone who held with you.</p>
+    <p class="lede">Hold it like a cup and rest your index fingertip on the camera lens on the back. That is the cup on your skin. Keep it there: the cup reads your pulse, and your element appears in its glass. Lift your finger and the mark appears, made with everyone who held with you.</p>
     <button class="go" id="go">Join</button>
     <details>
       <summary>Another group, sound, vibration</summary>
@@ -94,14 +94,6 @@ input[type=range]{width:100%;accent-color:var(--accent)}
       </div>
     </details>
     <p class="small">The page asks for the camera: it only reads the colour of your fingertip, on this phone, to find your pulse. No image leaves the phone and nothing is stored. Only your cup's state and heartbeat travel to your group, through a public relay. Not a medical measurement.</p>
-  </div>
-</div>
-
-<div class="sheetwrap" id="elements" hidden>
-  <div class="sheet">
-    <h2>Choose your element</h2>
-    <p class="lede">Your cup glows in its colour. You can change it later from the top of the screen.</p>
-    <div id="el-list"></div>
   </div>
 </div>
 
@@ -560,6 +552,14 @@ const $=id=>document.getElementById(id);
 const ELRGB=[[25,201,90],[239,59,34],[239,178,26],[232,235,230],[43,99,255]];
 const ELCSS=ELRGB.map(c=>'rgb('+c.join(',')+')');
 const BRUISE=[142,47,98];
+const CLEAR=[205,214,218];   // the cup before it has read you: clear glass
+const elCol=e=>(Number.isInteger(e)&&e>=0&&e<5)?ELRGB[e]:CLEAR;
+// the pulse reveals an element: an artistic reading inspired by pulse diagnosis, not a medical one
+// slow and deep: Water · light and even: Metal · moderate and steady: Earth · quick and taut: Wood · quick and rising: Fire
+const PULSE_EL=[[0,62,4],[62,68,3],[68,76,2],[76,86,0],[86,999,1]];
+const EL_HANJA=['木','火','土','金','水'];
+const EL_PULSE=['Quick and taut, like a spring shoot.','Quick and rising, like summer.','Moderate and steady, the centre.','Light and even, gathering in.','Slow and deep, resting.'];
+function elFromBpm(b,cur){if(cur>=0){const band=PULSE_EL.find(x=>x[2]===cur);if(b>=band[0]-2&&b<band[1]+2)return cur;}return PULSE_EL.find(x=>b>=x[0]&&b<x[1])[2];}
 const GROUPS=[['well','井'],['spring','滎'],['stream','輸'],['river','經'],['hap','合']];
 const ME=Math.random().toString(36).slice(2,10);
 const opt={sound:true,vib:true,torch:false,pulse:true,motion:false,debug:false,bright:1,str:0.8,mode:'self',role:'s',skin:0.03};
@@ -581,7 +581,7 @@ function makeFirmware(){cup=new Cup(host,1);centre=new Centre(host);centre.confi
 
 // ---------------- the group ----------------
 const members=new Map();   // id -> {t, last, st}
-let joinT=0,seats=1,myId=1,myEl=0,elChosen=false;
+let joinT=0,seats=1,myId=1,myEl=-1,elChosen=false;
 function roster(){
   const now=Date.now(),list=[[ME,joinT]];
   for(const [id,m] of members)if(now-m.last<7000&&m.t)list.push([id,m.t]);
@@ -592,7 +592,6 @@ function updateSeats(){
   const r=roster(),n=Math.min(5,r.length),mine=cupIdOf(ME);
   if(n!==seats){seats=n;centre.configure(n);centre.boot(host.now);}
   if(mine!==myId){myId=mine;cup.id=mine;cup.name='cup '+mine;}
-  if(!elChosen)myEl=(myId-1)%5;    // a different element for each seat until you choose one
   const role=opt.role==='g'?'giving':opt.role==='r'?'receiving':'on my own';
   $('b-seat').textContent=(myId<=5?'seat '+myId:'watching')+' · '+r.length+(r.length===1?' phone':' phones');
 }
@@ -618,7 +617,7 @@ const net={client:null,base:'',ok:false,broker:0,sent:0,got:0,
       if(kind==='m'){this.got++;
         if(/^C(,\d{1,3}){5}$/.test(s)){const cid=cupIdOf(id);if(cid>=1&&cid<=5)centre.inbox.push({at:host.now+2,msg:'C'+cid+s.slice(1)});}
         else if(s[0]==='S'){try{m.st=readState(JSON.parse(s.slice(1)));}catch(e){}}
-        else if(s[0]==='B'){try{const b=+JSON.parse(s.slice(1)).b;if(b>=30&&b<=200){m.bpm=Math.round(b);m.beatAt=Date.now();audio.tick((m.st&&m.st.e)||0);meetCheck(id,m.beatAt);}}catch(e){}}
+        else if(s[0]==='B'){try{const b=+JSON.parse(s.slice(1)).b;if(b>=30&&b<=200){m.bpm=Math.round(b);m.beatAt=Date.now();audio.tick(m.st&&m.st.e>=0?m.st.e:2);meetCheck(id,m.beatAt);}}catch(e){}}
       }
     });
   },
@@ -629,7 +628,7 @@ const net={client:null,base:'',ok:false,broker:0,sent:0,got:0,
 // another phone's cup, checked field by field (what arrives is untrusted)
 function readState(o){
   const st={};
-  st.e=Number.isInteger(o.e)&&o.e>=0&&o.e<5?o.e:0;
+  st.e=Number.isInteger(o.e)&&o.e>=0&&o.e<5?o.e:-1;
   st.p=o.p===1;st.s=clamp(+o.s||0,0,100)/100;st.l=clamp(+o.l||0,0,100)/100;
   st.r=['s','g','r'].includes(o.r)?o.r:'s';
   st.hr=Number.isInteger(o.hr)&&o.hr>=30&&o.hr<=200?o.hr:0;
@@ -740,18 +739,24 @@ const pulse={on:false,state:'off',bpm:0,ivals:[],buf:[],z:[],amp:0,last:0,beatAt
 // beats that land together: the pulses meet
 const meet={count:0,mine:0,last:new Map(),ripples:[]};
 function beatTimes(){const out=[];if(pulse.state==='reading'&&pulse.beatAt)out.push([ME,pulse.beatAt,myEl]);
-  for(const [id,m] of others())if(m.beatAt&&m.bpm)out.push([id,m.beatAt,(m.st&&m.st.e)||0]);return out;}
+  for(const [id,m] of others())if(m.beatAt&&m.bpm)out.push([id,m.beatAt,m.st?m.st.e:-1]);return out;}
 function meetCheck(id,t){
   const now=Date.now();
   for(const [j,tj,ej] of beatTimes()){if(j===id||Math.abs(t-tj)>180)continue;
     const key=[id,j].sort().join('|');if(now-(meet.last.get(key)||0)<400)continue;meet.last.set(key,now);
     meet.count++;if(id===ME||j===ME)meet.mine++;
-    const ei=id===ME?myEl:(((members.get(id)||{}).st||{}).e||0);
-    meet.ripples.push({t:now,a:ELRGB[ei],b:ELRGB[ej]});if(meet.ripples.length>8)meet.ripples.shift();
-    audio.bell(ei,0.35);if(opt.vib&&canVibrate){try{navigator.vibrate(25);}catch(e){}}}
+    const ei=id===ME?myEl:(((members.get(id)||{}).st||{}).e);
+    meet.ripples.push({t:now,a:elCol(ei),b:elCol(ej)});if(meet.ripples.length>8)meet.ripples.shift();
+    audio.bell(ei>=0?ei:2,0.35);if(opt.vib&&canVibrate){try{navigator.vibrate(25);}catch(e){}}}
 }
 function myBeat(){
   pulse.beatAt=Date.now();pulse.count++;if(cupS.placed)cupS.beats=(cupS.beats||0)+1;
+  // after eight steady beats on the lens the pulse reveals the element; later it can move if the pulse stays in another band
+  if(cupS.placed){cupS.readBeats=(cupS.readBeats||0)+1;
+    if(cupS.readBeats>=8){const cand=elFromBpm(pulse.bpm,myEl);
+      if(myEl<0){myEl=cand;cupS.revealAt=Date.now();cupS.changed=false;audio.bell(cand,1);if(opt.vib&&canVibrate){try{navigator.vibrate([40,60,40]);}catch(e){}}}
+      else if(cand!==myEl){cupS.candN=(cupS.cand===cand?(cupS.candN||0)+1:1);cupS.cand=cand;if(cupS.candN>=5){myEl=cand;cupS.revealAt=Date.now();cupS.changed=true;cupS.candN=0;audio.bell(cand,0.7);}}
+      else cupS.candN=0;}}
   net.send('B'+JSON.stringify({b:pulse.bpm}));audio.thump();meetCheck(ME,pulse.beatAt);
 }
 const beatK=t0=>{const a=Date.now()-t0;return t0&&a>=0&&a<900?Math.exp(-a/230):0;};
@@ -802,13 +807,13 @@ function drawTraces(ring,now,lk,alpha){
   ctx.save();ctx.beginPath();ctx.arc(lk.x,lk.y,lk.R,0,2*Math.PI);ctx.clip();ctx.lineCap='round';ctx.lineJoin='round';
   if(syncK>0.55&&active.length>1){
     // the shared figure, faint and whole
-    const r=1/n,d=0.75*r,s=lk.R*0.8,e=active[0].st.e||0;ctx.beginPath();
+    const r=1/n,d=0.75*r,s=lk.R*0.8,e=active[0].st.e;ctx.beginPath();
     for(let th=0;th<=2*Math.PI+0.01;th+=0.01){const x=(1-r)*Math.cos(th)+d*Math.cos((1-r)/r*th),y=(1-r)*Math.sin(th)-d*Math.sin((1-r)/r*th);th?ctx.lineTo(lk.x+x*s,lk.y+y*s):ctx.moveTo(lk.x+x*s,lk.y+y*s);}
-    ctx.strokeStyle=rgba(mix(ELRGB[e],[255,255,255],0.3),0.35*alpha*(syncK-0.55)/0.45);ctx.lineWidth=1.5;ctx.stroke();
+    ctx.strokeStyle=rgba(mix(elCol(e),[255,255,255],0.3),0.35*alpha*(syncK-0.55)/0.45);ctx.lineWidth=1.5;ctx.stroke();
   }
   ctx.globalCompositeOperation='lighter';ctx.lineCap='butt';
   active.forEach(p=>{
-    const e=p.st.e||0,lvl=p.st.p?0.4+0.6*p.st.s:p.st.l;
+    const e0=p.st.e,e=e0>=0?e0:2,lvl=p.st.p?0.4+0.6*p.st.s:p.st.l;
     const kOwn=2.4+e*0.37+0.2*Math.sin(now/9000+e*1.7),k=kOwn+(n-kOwn)*syncK;
     const r=1/k,d=0.75*r,ph=(e*1.3)*(1-syncK),s=lk.R*0.8*(0.6+0.4*lvl);
     const Q=th=>[(1-r)*Math.cos(th)+d*Math.cos((1-r)/r*th),(1-r)*Math.sin(th)-d*Math.sin((1-r)/r*th)];
@@ -818,7 +823,7 @@ function drawTraces(ring,now,lk,alpha){
       ctx.beginPath();let q=Q(a0);ctx.moveTo(lk.x+q[0]*s,lk.y+q[1]*s);
       for(let th=a0+step;th<a1;th+=step){q=Q(th);ctx.lineTo(lk.x+q[0]*s,lk.y+q[1]*s);}
       q=Q(a1);ctx.lineTo(lk.x+q[0]*s,lk.y+q[1]*s);
-      const k2=(c+1)/chunks;ctx.strokeStyle=rgba(ELRGB[e],(0.12+0.75*lvl)*k2*k2*alpha);ctx.lineWidth=1+2.2*lvl*k2;ctx.stroke();
+      const k2=(c+1)/chunks;ctx.strokeStyle=rgba(elCol(e0),(0.12+0.75*lvl)*k2*k2*alpha);ctx.lineWidth=1+2.2*lvl*k2;ctx.stroke();
     }
   });
   ctx.restore();ctx.globalCompositeOperation='source-over';
@@ -826,7 +831,7 @@ function drawTraces(ring,now,lk,alpha){
 function drawBeats(ring,lk,origin){
   const now=Date.now();ctx.save();ctx.beginPath();ctx.arc(lk.x,lk.y,lk.R,0,2*Math.PI);ctx.clip();ctx.globalCompositeOperation='lighter';
   ring.forEach(p=>{const t0=p.st.beatAt;if(!t0)return;const age=(now-t0)/1100;if(age<0||age>=1)return;const [ox,oy]=origin(p);
-    ctx.beginPath();ctx.arc(ox,oy,lk.R*(0.12+1.0*age),0,2*Math.PI);ctx.strokeStyle=rgba(ELRGB[p.st.e||0],0.55*(1-age));ctx.lineWidth=2+3*(1-age);ctx.stroke();});
+    ctx.beginPath();ctx.arc(ox,oy,lk.R*(0.12+1.0*age),0,2*Math.PI);ctx.strokeStyle=rgba(elCol(p.st.e),0.55*(1-age));ctx.lineWidth=2+3*(1-age);ctx.stroke();});
   meet.ripples.forEach(r=>{const age=(now-r.t)/1600;if(age<0||age>=1)return;
     ctx.beginPath();ctx.arc(lk.x,lk.y,lk.R*(0.22+0.78*age),0,2*Math.PI);ctx.strokeStyle=rgba(mix(mix(r.a,r.b,0.5),[255,245,230],0.45),0.8*(1-age));ctx.lineWidth=2+3*(1-age);ctx.stroke();});
   ctx.restore();ctx.globalCompositeOperation='source-over';
@@ -847,7 +852,7 @@ function skinNow(){return camOK?(pulse.on&&pulse.state!=='nofinger'):cupS.touchH
 function cupStep(dt,now){
   const skin=skinNow();
   if(skin){cupS.skinT+=dt;cupS.offT=0;}else{cupS.offT+=dt;cupS.skinT=0;}
-  if(!cupS.placed&&skin&&(cupS.skinT>350||!camOK)){cupS.placed=true;cupS.since=now;cupS.s=0;cupS.beats=0;cupS.together=new Map();audio.place();}
+  if(!cupS.placed&&skin&&(cupS.skinT>350||!camOK)){cupS.placed=true;cupS.since=now;cupS.s=0;cupS.beats=0;cupS.readBeats=0;cupS.candN=0;cupS.revealAt=0;myEl=camOK?-1:(myId-1)%5;cupS.together=new Map();audio.place();}
   if(cupS.placed&&!skin&&(cupS.offT>450||!camOK))release(now);
   if(!cupS.placed)return;
   // the pull deepens while the cup stays on the skin (about 20 s to full)
@@ -857,13 +862,13 @@ function cupStep(dt,now){
 function release(now){
   const held=(now-cupS.since)/1000;cupS.placed=false;
   if(held<2||cupS.s<0.08){cupS.s=0;return;}
-  const Lm=new Map();Lm.set(myEl,Math.min(1,held/20)*cupS.s);
+  const Lm=new Map();if(myEl>=0)Lm.set(myEl,Math.min(1,held/20)*cupS.s);
   for(const [id,w] of cupS.together){const m=members.get(id);if(!m||!m.st)continue;const e=m.st.e;Lm.set(e,(Lm.get(e)||0)+Math.min(1,w/12));}
   const tot=[...Lm.values()].reduce((a,b)=>a+b,0)||1;
   cupS.mark={t:Date.now(),d:cupS.s,L:[...Lm.entries()].sort((a,b)=>b[1]-a[1]).map(([e,w])=>[e,w/tot]),who:cupS.together.size,beats:cupS.beats||0};
   audio.pop(cupS.s);cupS.s=0;
 }
-function padTargets(){const t=[0,0,0,0,0];if(cupS.placed)t[myEl]=0.3+0.6*cupS.s;return t;}
+function padTargets(){const t=[0,0,0,0,0];if(cupS.placed&&myEl>=0)t[myEl]=0.3+0.6*cupS.s;return t;}
 let pairWith='';
 const cv=$('cv');
 // without a camera, a touch anywhere on the cup places it
@@ -887,7 +892,7 @@ function draw(now){
     const br=(tog?0.8+0.2*breathAt(t):0.92)*(1+0.3*beatK(pulse.beatAt));
     const lift=mix(mix(skinRGB,[215,80,96],s*0.6),BRUISE,s*s*0.4);
     const sk=ctx.createRadialGradient(cx,cy,0,cx,cy,Rc);
-    sk.addColorStop(0,rgba(mix(lift,ELRGB[myEl],0.1).map(v=>v*(0.6+0.4*br)*bright),1));sk.addColorStop(0.75,rgba(mix(skinRGB,lift,0.5).map(v=>v*0.72*bright),1));sk.addColorStop(1,rgba(skinRGB.map(v=>v*0.45*bright),1));
+    sk.addColorStop(0,rgba(mix(lift,elCol(myEl),myEl>=0?0.16:0.04).map(v=>v*(0.6+0.4*br)*bright),1));sk.addColorStop(0.75,rgba(mix(skinRGB,lift,0.5).map(v=>v*0.72*bright),1));sk.addColorStop(1,rgba(skinRGB.map(v=>v*0.45*bright),1));
     ctx.fillStyle=sk;ctx.beginPath();ctx.arc(cx,cy,Rc,0,2*Math.PI);ctx.fill();
     ctx.save();ctx.beginPath();ctx.arc(cx,cy,Rc,0,2*Math.PI);ctx.clip();
     for(let i=1;i<=7;i++){const f=i/8,r=Rc*f*(1-0.28*s*(1-f));ctx.beginPath();ctx.arc(cx,cy,r,0,2*Math.PI);ctx.strokeStyle=rgba([255,220,210],(0.05+0.2*s)*(1-f*0.5)*bright);ctx.lineWidth=1.2;ctx.stroke();}
@@ -904,13 +909,14 @@ function draw(now){
   ctx.beginPath();ctx.arc(cx,cy,Rc*0.965,-Math.PI*0.85,-Math.PI*0.55);ctx.strokeStyle='rgba(255,255,255,0.3)';ctx.lineWidth=2;ctx.stroke();
   for(let i=0;i<12;i++){const c=cup.ring[i];if(!(c[0]+c[1]+c[2]))continue;const a0=(15+30*i-14)*Math.PI/180-Math.PI/2,a1=(15+30*i+14)*Math.PI/180-Math.PI/2;
     ctx.beginPath();ctx.arc(cx,cy,Rc*1.08,a0,a1);ctx.strokeStyle=rgba(ledRGB(c,bright),1);ctx.lineWidth=Rc*0.07;ctx.stroke();}
+  if(cupS.revealAt){const age=Date.now()-cupS.revealAt;if(age<2200){ctx.beginPath();ctx.arc(cx,cy,Rc*(1+0.25*age/2200),0,2*Math.PI);ctx.strokeStyle=rgba(elCol(myEl),0.9*(1-age/2200));ctx.lineWidth=14*(1-age/2200)+2;ctx.stroke();}}
   if(cup.flash){const age=host.now-cup.flash[1];if(age<1400){ctx.beginPath();ctx.arc(cx,cy,Rc,0,2*Math.PI);ctx.strokeStyle=rgba(ELRGB[cup.flash[0]],0.8*(1-age/1400));ctx.lineWidth=10;ctx.stroke();}}
   // the others, around your cup
-  ring.forEach(p=>{if(p.id===ME)return;const st=p.st,x=cx+Math.cos(p.a)*Rc*1.32,y=cy+Math.sin(p.a)*Rc*1.32,r=Rc*0.12,col=ELRGB[st.e||0];
+  ring.forEach(p=>{if(p.id===ME)return;const st=p.st,x=cx+Math.cos(p.a)*Rc*1.32,y=cy+Math.sin(p.a)*Rc*1.32,r=Rc*0.12,col=elCol(st.e);
     if(st.mk)drawMark(x,y,r*2.4,st.mk,1);
     ctx.beginPath();ctx.arc(x,y,r,0,2*Math.PI);ctx.fillStyle='rgba(16,18,18,0.92)';ctx.fill();ctx.strokeStyle=rgba(col,0.85);ctx.lineWidth=2+5*beatK(st.beatAt);ctx.stroke();
     const lv=st.p?st.s:(st.l||0);if(lv>0.01){ctx.beginPath();ctx.arc(x,y,r*0.8,-Math.PI/2,-Math.PI/2+2*Math.PI*lv);ctx.strokeStyle=rgba(col,0.95);ctx.lineWidth=r*0.3;ctx.stroke();}
-    ctx.fillStyle='#c9cfcb';ctx.font='500 12px "IBM Plex Sans",sans-serif';ctx.textAlign='center';ctx.textBaseline='top';ctx.fillText(EL_NAME[st.e||0]+(st.hr?' · '+st.hr:''),x,y+r+4);});
+    ctx.fillStyle='#c9cfcb';ctx.font='500 12px "IBM Plex Sans",sans-serif';ctx.textAlign='center';ctx.textBaseline='top';ctx.fillText((st.e>=0?EL_NAME[st.e]:(st.p?'reading':'clear'))+(st.hr?' · '+st.hr:''),x,y+r+4);});
   // words
   const cap=caption(),ty=cy+Rc*1.5+14;ctx.textAlign='center';ctx.textBaseline='alphabetic';
   ctx.fillStyle='#ecefec';ctx.font='400 '+Math.round(Math.min(23,W*0.058))+'px "Gowun Batang",Georgia,serif';const y2=wrapText(cap[0],W/2,ty,W*0.88,28);
@@ -919,7 +925,7 @@ function draw(now){
   const chips=camOK?[['camera',true],['skin',skinNow()],['pulse',pulse.state==='reading']]:[['touch',cupS.touchHold]];
   const cw=86,gap=8,tw=chips.length*cw+(chips.length-1)*gap,by=H-Math.max(78,H*0.1);
   chips.forEach(([lab,on],i)=>{const x=W/2-tw/2+i*(cw+gap);ctx.beginPath();if(ctx.roundRect)ctx.roundRect(x,by,cw,30,15);else ctx.rect(x,by,cw,30);
-    ctx.fillStyle=on?rgba(ELRGB[myEl],0.9):'rgba(255,255,255,0.04)';ctx.fill();ctx.strokeStyle=on?rgba(ELRGB[myEl],1):'rgba(255,255,255,0.22)';ctx.lineWidth=1.5;ctx.stroke();
+    ctx.fillStyle=on?rgba(elCol(myEl),0.9):'rgba(255,255,255,0.04)';ctx.fill();ctx.strokeStyle=on?rgba(elCol(myEl),1):'rgba(255,255,255,0.22)';ctx.lineWidth=1.5;ctx.stroke();
     ctx.fillStyle=on?(myEl===3?'#111':'#0b0c0c'):'#8c938f';ctx.font='600 13px "IBM Plex Sans",sans-serif';ctx.textBaseline='middle';ctx.fillText(lab,x+cw/2,by+15);});
   ctx.textBaseline='alphabetic';ctx.fillStyle=net.ok?'#8c938f':'#e7a27c';ctx.font='500 12.5px "IBM Plex Mono",monospace';
   ctx.fillText(net.ok?infoLine():'connecting to the group',W/2,H-Math.max(24,H*0.032));
@@ -940,15 +946,17 @@ function howToHold(cx,cy,R,t){
   const fx=lx+dx*0.2,fy=ly+dy*0.2;
   ctx.save();ctx.translate(fx+dx*0.5,fy+dy*0.5);ctx.rotate(Math.atan2(-dy,-dx));
   ctx.beginPath();if(ctx.roundRect)ctx.roundRect(-R*0.55,-R*0.085,R*0.6,R*0.17,R*0.085);else ctx.rect(-R*0.55,-R*0.085,R*0.6,R*0.17);
-  ctx.fillStyle=rgba(ELRGB[myEl],0.28);ctx.fill();ctx.strokeStyle=rgba(ELRGB[myEl],0.95);ctx.lineWidth=2;ctx.stroke();
+  ctx.fillStyle=rgba(elCol(myEl),0.28);ctx.fill();ctx.strokeStyle=rgba(elCol(myEl),0.95);ctx.lineWidth=2;ctx.stroke();
   ctx.restore();
-  ctx.fillStyle=rgba(ELRGB[myEl],1);ctx.font='600 12px "IBM Plex Sans",sans-serif';ctx.fillText('index fingertip',cx,y0-10);
+  ctx.fillStyle=rgba(elCol(myEl),1);ctx.font='600 12px "IBM Plex Sans",sans-serif';ctx.fillText('index fingertip',cx,y0-10);
 }
 function caption(){
   const st=centre.state||'';
   if(!camOK)return cupS.placed?['The cup is on your skin.',moment(st)||'Keep your touch still.']:['Touch and hold the cup.','The camera is not available here, so your touch places the cup.'];
   if(cupS.mark&&!cupS.placed&&Date.now()-cupS.mark.t<MARK_MS){const m=cupS.mark;return ['Your mark.',(m.beats>3?'You held for '+m.beats+' heartbeats. ':'')+(m.who?'Made with '+m.who+(m.who===1?' other cup. ':' other cups. '):'You held alone this time. ')+'It fades in 40 s.'];}
-  if(!cupS.placed)return ['Rest your index fingertip on the lens.','On the back of the phone, near the top. Press lightly, as when you feel a pulse.'];
+  if(!cupS.placed)return ['Rest your index fingertip on the lens.','On the back of the phone, near the top. Press lightly, as when you feel a pulse. The cup will read you.'];
+  if(myEl<0)return ['The cup is reading your pulse.',pulse.state==='reading'?'Keep still. '+Math.max(1,8-(cupS.readBeats||0))+' more heartbeats.':'Finding your pulse. Press lightly, keep still.'];
+  if(cupS.revealAt&&Date.now()-cupS.revealAt<6000)return [(cupS.changed?'Your pulse has moved to ':'Your pulse reads as ')+EL_NAME[myEl]+' '+EL_HANJA[myEl]+'.',EL_PULSE[myEl]+' '+pulse.bpm+' a minute. It may change as you settle.'];
   const head=cupS.s<0.4?'The cup is on your skin. Keep still.':'Deep now. Breathe with the others.';
   const sub=moment(st)||(pulse.state==='reading'?'Your pulse is '+pulse.bpm+'. Lift your finger to release the cup.':'Finding your pulse. Press lightly, keep still.');
   return [head,sub];
@@ -974,12 +982,13 @@ function frame(t){
   if(now-beatT>2000){net.beat();beatT=now;}
   if(now-seatT>400){updateSeats();seatT=now;}
   shareState(t);outputs(now);draw(t);
+  {const be=$('b-el'),txt=myEl>=0?EL_NAME[myEl]+' '+EL_HANJA[myEl]:(cupS.placed?'reading':'clear');if(be.textContent!==txt){be.textContent=txt;be.style.setProperty('--c',myEl>=0?ELCSS[myEl]:'rgb(205,214,218)');}}
   if(opt.debug)$('debug').textContent=(host.line||'centre: starting')+'\nrelay '+(net.ok?'connected':'connecting')+' · sent '+net.sent+' · heard '+net.got+'\ncup '+(cupS.placed?'placed, pull '+Math.round(cupS.s*100)+'%':'not placed')+' · pulse '+pulse.state+(pulse.bpm?' '+pulse.bpm:'')+'\ncamera rgb '+pulse.raw.map(v=>Math.round(v)).join('/')+(pulse.lit?' · flashlight on':' · no flashlight');
   requestAnimationFrame(frame);
 }
 function outputs(now){
   const pulling=cupS.placed?cupS.s:-1;
-  audio.pullTo(Math.max(0,pulling),myEl,pulling>=0);
+  audio.pullTo(Math.max(0,pulling),myEl>=0?myEl:2,pulling>=0);
   if(opt.vib&&canVibrate&&pulling>0.03){
     const tog=others().some(([,m])=>m.st&&(m.st.p||m.st.l>0.15));
     const period=tog?2500:Math.round(1900-700*pulling);
@@ -996,11 +1005,7 @@ function pickGroup(name){group=name;gIn.value=name;document.querySelectorAll('#g
 GROUPS.forEach(([n,h])=>{const b=document.createElement('button');b.dataset.g=n;b.innerHTML=n+'<small>'+h+'</small>';b.setAttribute('aria-pressed','false');b.addEventListener('click',()=>pickGroup(n));$('groups').appendChild(b);});
 gIn.addEventListener('input',()=>{const g=clean(gIn.value);document.querySelectorAll('#groups button').forEach(b=>b.setAttribute('aria-pressed',b.dataset.g===g));$('go').textContent=g?'Join '+g:'Join';});
 const qs=new URLSearchParams(location.search);pickGroup(clean(qs.get('g')||'hap'));
-const EL_INFO=[['木','spring, growing'],['火','summer, rising'],['土','the centre, holding'],['金','autumn, gathering'],['水','winter, resting']];
-(function buildElements(){const box=$('el-list');EL_NAME.forEach((n,i)=>{const b=document.createElement('button');b.className='elbtn';b.style.setProperty('--c',ELCSS[i]);
-  b.innerHTML='<i></i><span><b>'+n+' '+EL_INFO[i][0]+'</b><small>'+EL_INFO[i][1]+'</small></span>';
-  b.addEventListener('click',()=>{myEl=i;elChosen=true;$('elements').hidden=true;$('b-el').textContent=n;$('b-el').style.setProperty('--c',ELCSS[i]);});box.appendChild(b);});})();
-$('b-el').addEventListener('click',()=>{$('elements').hidden=false;});
+
 $('go').addEventListener('click',async()=>{
   const g=clean(gIn.value);if(!g){gIn.focus();return;}group=g;
   opt.sound=$('o-sound').checked;opt.vib=$('o-vib').checked;
@@ -1010,7 +1015,7 @@ $('go').addEventListener('click',async()=>{
   if(!canVibrate)$('s-vib-note').textContent='This phone does not offer vibration to web pages (iPhone).';
   joinT=Date.now();makeFirmware();net.start(group);
   history.replaceState(null,'','?g='+group);
-  $('start').hidden=true;$('bar').hidden=false;$('b-group').textContent=group;$('elements').hidden=false;
+  $('start').hidden=true;$('bar').hidden=false;$('b-group').textContent=group;
   running=true;last=performance.now();acc=0;syncSettings();requestAnimationFrame(frame);
 });
 function syncSettings(){
@@ -1026,7 +1031,7 @@ $('s-debug').addEventListener('change',e=>{opt.debug=e.target.checked;$('debug')
 $('s-sound').addEventListener('change',e=>{opt.sound=e.target.checked;audio.resume();if(!opt.sound)audio.tune(null);});
 $('s-vib').addEventListener('change',e=>opt.vib=e.target.checked);
 $('s-leave').addEventListener('click',()=>{running=false;net.stop();pulse.stop();cam.close();audio.tune(null);audio.pullTo(0,0,false);members.clear();cupS.placed=false;cupS.touchHold=false;meet.count=0;meet.ripples=[];
-  $('settings').hidden=true;$('bar').hidden=true;$('debug').hidden=true;$('elements').hidden=true;$('start').hidden=false;$('go').disabled=false;pickGroup(group);ctx.clearRect(0,0,W,H);});
+  myEl=-1;$('settings').hidden=true;$('bar').hidden=true;$('debug').hidden=true;$('start').hidden=false;$('go').disabled=false;pickGroup(group);ctx.clearRect(0,0,W,H);});
 window.addEventListener('pagehide',()=>{net.stop();cam.close();});
 window.CircCup={get cup(){return cup;},get centre(){return centre;},roster,net,cupS,opt,members,pulse,meet,ME,get camOK(){return camOK;},setEl:e=>{myEl=e;elChosen=true;}};
 })();
