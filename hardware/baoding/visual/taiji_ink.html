@@ -1,0 +1,398 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Taiji Ink</title>
+<style>
+  :root { --bg:#efe9dc; --fg:#2a2620; --panel:rgba(239,233,220,.92); --line:rgba(42,38,32,.25); }
+  :root[data-theme="night"] { --bg:#0d0d10; --fg:#e9e5dc; --panel:rgba(20,20,24,.9); --line:rgba(233,229,220,.2); }
+  html, body { margin:0; height:100%; background:var(--bg); color:var(--fg); overflow:hidden;
+    font:13px/1.4 ui-sans-serif, -apple-system, "Helvetica Neue", sans-serif; }
+  canvas { display:block; width:100vw; height:100vh; touch-action:none; }
+  #panel { position:fixed; top:12px; left:12px; background:var(--panel); border:1px solid var(--line);
+    border-radius:10px; padding:10px 12px; width:236px; backdrop-filter:blur(6px); }
+  #panel.hidden { display:none; }
+  #panel h1 { font-size:13px; margin:0 0 6px; font-weight:600; letter-spacing:.02em; }
+  .row { display:flex; gap:6px; align-items:center; margin:6px 0; flex-wrap:wrap; }
+  .row label { min-width:54px; opacity:.75; }
+  button, select { font:inherit; color:var(--fg); background:transparent; border:1px solid var(--line);
+    border-radius:6px; padding:3px 8px; cursor:pointer; }
+  button.on { background:var(--fg); color:var(--bg); }
+  input[type=range] { width:120px; }
+  #stats { font-variant-numeric:tabular-nums; white-space:pre; opacity:.85; margin-top:6px; }
+  #hint { opacity:.6; font-size:12px; margin-top:6px; }
+</style>
+</head>
+<body>
+<canvas id="c"></canvas>
+<div id="panel">
+  <h1>Taiji ink · Baoding balls</h1>
+  <div class="row"><label>Source</label>
+    <button data-src="sim" class="on">Simulated</button><button data-src="hand">Your hand</button><button data-src="serial">Nest (USB)</button>
+  </div>
+  <div class="row"><label>Paper</label>
+    <button data-theme="paper" class="on">Rice paper</button><button data-theme="night">Projection</button>
+  </div>
+  <div class="row"><label>Path</label>
+    <button data-path="rings" class="on">Rings</button><button data-path="taiji">Taiji</button>
+  </div>
+  <div class="row"><label>Sound</label>
+    <button id="sound">Off</button><input id="vol" type="range" min="0" max="1" step="0.05" value="0.5">
+  </div>
+  <div class="row"><label>Speed</label><input id="speed" type="range" min="0.25" max="3" step="0.25" value="1"><span id="speedv">1×</span></div>
+  <div class="row"><button id="clear">New scroll</button><button id="save">Save PNG</button><button id="wipe">Clear wall</button></div>
+  <div id="stats"></div>
+  <div id="hint">H hides this panel · F full screen</div>
+</div>
+<script>
+// ---------- model: two balls, as the nest's analysis reports them ----------
+// phi: unwrapped orbit angle (rad, + = anticlockwise seen from above); rate: turns/s (signed);
+// even: 0..1 or null; rest: true when still. Same rules as baoding_core.py.
+const TAU = Math.PI * 2;
+const ELEMENTS = [["Wood","木"],["Fire","火"],["Earth","土"],["Metal","金"],["Water","水"]];
+function mkBall(name){ return {name, tPrev:null, phi:0, rate:0, even:null, rest:true, periods:[], mark:0, tMark:null, turned:0, total:0, lastStep:0}; }
+const balls = [mkBall("dragon"), mkBall("phoenix")];
+let element = 2, lastTurned = 0;
+
+function track(b, t, phi, still){            // turn counting + evenness from an unwrapped angle
+  const dt = b.tPrev === null ? 1/60 : Math.max(1e-3, t - b.tPrev); b.tPrev = t;
+  if (still){ b.rest = true; b.rate *= Math.pow(0.94, dt*60); b.phi = phi; return; }
+  b.rate += 0.08 * ((phi - b.phi) / dt / TAU - b.rate);
+  b.phi = phi; b.rest = false;
+  if (b.tMark === null){ b.tMark = t; b.mark = phi; }
+  if (Math.abs(b.phi - b.mark) >= TAU){
+    const step = b.phi > b.mark ? 1 : -1;
+    if (step !== b.lastStep) b.periods = [];
+    b.lastStep = step;
+    b.periods = b.periods.concat([t - b.tMark]).slice(-4);
+    b.mark += step * TAU; b.tMark = t; b.turned += step; b.total += 1;
+  }
+  const p = b.periods;
+  if (p.length >= 3){ const m = p.reduce((a,c)=>a+c,0)/p.length;
+    const sd = Math.sqrt(p.reduce((a,c)=>a+(c-m)**2,0)/p.length); b.even = Math.max(0, Math.min(1, 1 - 4*sd/m)); }
+}
+function stepElement(){
+  const n = Math.abs(balls[0].turned) >= Math.abs(balls[1].turned) ? balls[0].turned : balls[1].turned;
+  if (n !== lastTurned){ element = (((element + n - lastTurned) % 5) + 5) % 5; lastTurned = n; }
+}
+
+// ---------- sources ----------
+let source = "sim", speed = 1;
+// 1) simulated: the same script as sim_baoding.py, looping
+const SCRIPT = [[3,0,true,0],[12,-0.8,true,0],[6,-0.8,true,1],[10,1.2,true,0],[5,1.2,false,0],[6,0,false,0]];
+const SCRIPT_LEN = SCRIPT.reduce((a,s)=>a+s[0],0);
+const sim = {t:0, th:[0, Math.PI]};
+function simStep(t, dt){
+  let u = sim.t % SCRIPT_LEN, seg = SCRIPT[0];
+  for (const s of SCRIPT){ if (u < s[0]){ seg = s; break; } u -= s[0]; }
+  sim.t += dt;
+  let f = seg[1];
+  if (seg[3]) f *= 1 + 0.45*Math.sin(TAU*0.7*sim.t) + 0.25*Math.sin(5.3*sim.t);
+  for (let i = 0; i < 2; i++){
+    const on = i === 0 || seg[2];
+    const still = !on || f === 0;
+    if (!still) sim.th[i] += TAU * f * dt + (Math.random()-0.5)*0.02;
+    track(balls[i], t, sim.th[i], still);
+  }
+}
+// 2) your hand: circle the pointer around the centre; the second ball follows opposite
+const hand = {phi:0, last:null, moved:-1e9};
+function handMove(x, y){
+  const a = Math.atan2(-(y - H/2), x - W/2);
+  if (hand.last !== null){ let d = a - hand.last; d -= TAU*Math.round(d/TAU); hand.phi += d; if (Math.abs(d) > 0.002) hand.moved = now; }
+  hand.last = a;
+}
+function handStep(t){
+  const still = t - hand.moved > 0.35;
+  track(balls[0], t, hand.phi, still); track(balls[1], t, hand.phi + Math.PI, still);
+}
+// 3) the nest over USB (Web Serial, Chrome/Edge). One JSON line per update from nest_main.py:
+// {"t":..,"d":[phi,rate,even,rest],"p":[phi,rate,even,rest],"el":n}
+let serialLatest = null, port = null;
+async function openSerial(){
+  if (!("serial" in navigator)){ alert("Web Serial needs Chrome or Edge."); return false; }
+  try { port = await navigator.serial.requestPort(); await port.open({baudRate:115200}); }
+  catch(e){ return false; }
+  const dec = new TextDecoderStream(); port.readable.pipeTo(dec.writable);
+  const rd = dec.readable.getReader(); let buf = "";
+  (async () => { for(;;){ const {value, done} = await rd.read(); if (done) break; buf += value;
+      let k; while ((k = buf.indexOf("\n")) >= 0){ const line = buf.slice(0,k).trim(); buf = buf.slice(k+1);
+        if (line[0] === "{"){ try { serialLatest = JSON.parse(line); } catch(e){} } } } })();
+  return true;
+}
+function serialStep(t){
+  if (!serialLatest) return;
+  const m = serialLatest;
+  [m.d, m.p].forEach((v, i) => { const b = balls[i]; b.phi = v[0]; b.rate = v[1]; b.even = v[2] < 0 ? null : v[2]; b.rest = !!v[3]; });
+  element = m.el;
+}
+
+// ---------- canvas ----------
+const cv = document.getElementById("c"), ctx = cv.getContext("2d");
+let W, H, DPR, S, scroll, sctx, paperTex;
+const theme = { paper:{bg:[239,233,220], ink:[22,19,16], red:[178,38,30], wash:[120,112,100]},
+                night:{bg:[13,13,16],   ink:[236,232,222], red:[214,64,48], wash:[120,120,130]} };
+let T = theme.paper;
+function resize(){
+  DPR = Math.min(2, window.devicePixelRatio || 1);
+  W = innerWidth; H = innerHeight; cv.width = W*DPR; cv.height = H*DPR;
+  ctx.setTransform(DPR,0,0,DPR,0,0);
+  const s = Math.round(Math.min(W, H) * 0.86);
+  if (!scroll || scroll.width !== s*DPR){
+    const old = scroll; scroll = document.createElement("canvas"); scroll.width = scroll.height = s*DPR;
+    sctx = scroll.getContext("2d"); sctx.setTransform(DPR,0,0,DPR,0,0);
+    if (old) sctx.drawImage(old, 0, 0, s, s);
+  }
+  S = s; makePaper();
+}
+function makePaper(){                         // fibres for the rice paper
+  paperTex = document.createElement("canvas"); paperTex.width = W; paperTex.height = H;
+  const p = paperTex.getContext("2d");
+  const [r,g,b] = T.bg; p.fillStyle = `rgb(${r},${g},${b})`; p.fillRect(0,0,W,H);
+  if (T === theme.paper){
+    for (let i = 0; i < W*H/90; i++){
+      const x = Math.random()*W, y = Math.random()*H, l = 4 + Math.random()*16, a = Math.random()*TAU;
+      p.strokeStyle = `rgba(120,100,70,${0.03 + Math.random()*0.05})`; p.lineWidth = 0.6;
+      p.beginPath(); p.moveTo(x,y); p.quadraticCurveTo(x+Math.cos(a+1)*l*.4, y+Math.sin(a+1)*l*.4, x+Math.cos(a)*l, y+Math.sin(a)*l); p.stroke();
+    }
+  } else {
+    const gr = p.createRadialGradient(W/2,H/2,0,W/2,H/2,Math.max(W,H)*.6);
+    gr.addColorStop(0,"rgba(40,40,52,.5)"); gr.addColorStop(1,"rgba(0,0,0,0)"); p.fillStyle = gr; p.fillRect(0,0,W,H);
+  }
+}
+
+// ---------- brushes ----------
+// Each ball holds a brush. Path: the orbit angle, with the radius trading between the two balls
+// (one spirals out while the other spirals in), so the strokes cross twice a turn like the two
+// halves of the taiji. Speed thins the stroke; ink runs out over the turns and refills at rest
+// (the brush is dipped); an uneven hand splashes.
+const BR = 16;                               // bristles
+function mkBrush(seed){ return {ink:1, prev:null, bristle:Array.from({length:BR}, (_,i)=>({o:(i/(BR-1)-0.5), dry:Math.random(), j:Math.random()*TAU}))}; }
+const brushes = [mkBrush(1), mkBrush(2)];
+let session = {active:false, start:0, restSince:null, turns:0, sealed:false, dir:0};
+const wall = [];                              // past scrolls (the room of rhythms)
+
+let pathMode = "rings";
+function fishPoint(u, R){                    // one fish of the taiji, u in [0,1): outer half, then the S back
+  if (u < 0.5){ const a = u * TAU; return [R*Math.cos(a), R*Math.sin(a)]; }
+  if (u < 0.75){ const a = Math.PI + (u - 0.5) / 0.25 * Math.PI; return [-R/2 + R/2*Math.cos(a), R/2*Math.sin(a)]; }
+  const a = Math.PI - (u - 0.75) / 0.25 * Math.PI; return [R/2 + R/2*Math.cos(a), R/2*Math.sin(a)];
+}
+function brushPos(i, b, t){
+  const R = S*0.44;
+  if (pathMode === "taiji"){
+    // each ball's brush traces its own fish once per turn; the phoenix's fish is the dragon's turned half round
+    const u = (((b.phi / TAU) % 1) + 1) % 1;
+    const uneven = b.even === null ? 0.3 : 1 - b.even;
+    const k = 0.94 + 0.03*Math.sin(session.turns*0.7 + i) + uneven*0.05*Math.sin(b.phi*2.3 + i);
+    let [x, y] = fishPoint(u, R*k);
+    if (i){ x = -x; y = -y; }
+    return [S/2 + x, S/2 - y];
+  }
+  const phi = b.phi + (i ? Math.PI : 0);
+  const s = 0.5 + 0.5*Math.sin(b.phi*0.5 + (i ? Math.PI : 0));
+  const prog = Math.min(1, session.turns / 40);
+  let r = R*(0.30 + 0.62*s) * (1 - 0.25*prog);
+  const uneven = b.even === null ? 0.3 : 1 - b.even;
+  // an uneven hand wavers: slow, irregular (three unrelated waves), never a regular pattern
+  r += uneven * R * 0.045 * (Math.sin(b.phi*2.3 + i) + 0.6*Math.sin(b.phi*5.1 + 2*i) + 0.4*Math.sin(b.phi*8.7));
+  const rot = prog * 0.6;
+  return [S/2 + r*Math.cos(phi + rot), S/2 - r*Math.sin(phi + rot)];
+}
+function colourFor(i, b){
+  // the session's first direction paints ink (dragon) and cinnabar (phoenix); turning back = a wash
+  if (!session.dir && Math.abs(b.rate) > 0.1) session.dir = Math.sign(b.rate);
+  return (!session.dir || Math.sign(b.rate) === session.dir) ? (i ? T.red : T.ink) : T.wash;
+}
+function drawBrush(i, b, br, t, dt){
+  if (b.rest){ br.ink = Math.min(1, br.ink + dt*0.5); br.prev = null; return; }
+  const p = brushPos(i, b, t);
+  if (!br.prev){ br.prev = p; return; }
+  const [x0,y0] = br.prev, [x1,y1] = p, dx = x1-x0, dy = y1-y0, d = Math.hypot(dx,dy);
+  if (d < 0.3) return;
+  if (d > S*0.08){ br.prev = p; return; }                    // a jump (new data, reset): lift the brush
+  const sp = Math.min(1, Math.abs(b.rate)/1.6);
+  br.ink = Math.max(0.12, br.ink - d/(S*22));
+  const w = S*0.022*(1.35 - 0.75*sp)*(0.55 + 0.45*br.ink);
+  const nx = -dy/d, ny = dx/d;
+  const [r,g,bb] = colourFor(i, b);
+  sctx.lineCap = "butt";
+  for (const bs of br.bristle){
+    const dry = bs.dry > br.ink*1.15;                          // dry bristles skip: flying white
+    if (dry && Math.random() < 0.7) continue;
+    const off = bs.o*w + Math.sin(t*3 + bs.j)*w*0.06;
+    const a = (0.10 + 0.22*br.ink) * (T === theme.night ? 0.9 : 1);
+    sctx.strokeStyle = `rgba(${r},${g},${bb},${a})`;
+    sctx.lineWidth = Math.max(0.5, w/BR*2.2*(1-Math.abs(bs.o)));
+    sctx.beginPath(); sctx.moveTo(x0+nx*off, y0+ny*off); sctx.lineTo(x1+nx*off, y1+ny*off); sctx.stroke();
+  }
+  const uneven = b.even === null ? 0 : 1 - b.even;            // splashes from an uneven hand
+  if (uneven > 0.25 && Math.random() < uneven*0.5){
+    for (let k = 0; k < 3; k++){
+      const a = Math.random()*TAU, rr = w*(0.8 + Math.random()*2.5);
+      sctx.fillStyle = `rgba(${r},${g},${bb},${0.15 + Math.random()*0.3})`;
+      sctx.beginPath(); sctx.arc(x1+Math.cos(a)*rr, y1+Math.sin(a)*rr, Math.random()*w*0.18 + 0.4, 0, TAU); sctx.fill();
+    }
+  }
+  br.prev = p;
+}
+function seal(){
+  if (pathMode === "taiji"){                  // the two eyes: each fish holds a dot of the other's ink
+    const R = S*0.44*0.94, er = R*0.11;
+    [[T.red, -R/2], [T.ink, R/2]].forEach(([c, x]) => {
+      const [r,g,b] = c; sctx.fillStyle = `rgba(${r},${g},${b},0.85)`;
+      sctx.beginPath(); sctx.arc(S/2 + x, S/2, er, 0, TAU); sctx.fill();
+    });
+  }
+  const [r,g,b] = T.red, k = S*0.075, x = S - k - S*0.05, y = S - k - S*0.05;
+  sctx.fillStyle = `rgba(${r},${g},${b},0.88)`; sctx.fillRect(x, y, k, k);
+  sctx.fillStyle = T === theme.paper ? "rgba(239,233,220,.95)" : "rgba(13,13,16,.95)";
+  sctx.font = `${Math.round(k*0.72)}px "Songti SC","STSong","Noto Serif CJK SC",serif`; sctx.textAlign = "center"; sctx.textBaseline = "middle";
+  sctx.fillText(ELEMENTS[element][1], x + k/2, y + k/2 + 1);
+  const e = [balls[0].even, balls[1].even].filter(v => v !== null);
+  const [ir,ig,ib] = T.ink;
+  sctx.fillStyle = `rgba(${ir},${ig},${ib},.55)`; sctx.font = `${Math.round(S*0.018)}px ui-sans-serif, sans-serif`; sctx.textAlign = "right";
+  const d = new Date();
+  sctx.fillText(`${session.turns} turns · even ${e.length ? Math.min(...e).toFixed(2) : "–"} · ${d.getDate()}.${d.getMonth()+1}.${d.getFullYear()}`, x - k*0.25, y + k - 2);
+}
+function archive(){
+  const th = document.createElement("canvas"); th.width = th.height = 160;
+  th.getContext("2d").drawImage(scroll, 0, 0, 160, 160);
+  wall.unshift(th); if (wall.length > 14) wall.pop();
+  try { localStorage.setItem("taiji_wall", JSON.stringify(wall.map(c => c.toDataURL("image/png")))); } catch(e){}
+}
+function loadWall(){                          // past scrolls survive a reload (this browser only)
+  try {
+    const urls = JSON.parse(localStorage.getItem("taiji_wall") || "[]");
+    urls.forEach(u => { const im = new Image(); const c = document.createElement("canvas"); c.width = c.height = 160;
+      im.onload = () => c.getContext("2d").drawImage(im, 0, 0, 160, 160); im.src = u; wall.push(c); });
+  } catch(e){}
+}
+function clearScroll(){ sctx.clearRect(0,0,S,S); session = {active:false, start:0, restSince:null, turns:0, sealed:false, dir:0};
+  balls.forEach(b => { b.turned = 0; b.total = 0; b.periods = []; b.tMark = null; }); lastTurned = 0; brushes.forEach(b => { b.ink = 1; b.prev = null; }); }
+
+// ---------- sound: the duet ----------
+// Each ball rings once per half turn: dragon low, phoenix an octave and a fifth higher, both on the
+// current element's tone (Wood mi, Fire sol, Earth do, Metal re, Water la, as the cups). A chime =
+// a sine with two bell partials and a long fade. An uneven hand bends the pitch slightly.
+const TONE = [329.63, 392.00, 261.63, 293.66, 440.00];          // E4 G4 C4 D4 A4
+let actx = null, master = null, soundOn = false;
+const lastHalf = [null, null];
+function chime(freq, vel, pan){
+  if (!actx) return;
+  const t = actx.currentTime, out = actx.createGain(), p = actx.createStereoPanner();
+  p.pan.value = pan; out.connect(p); p.connect(master);
+  [[1, 1, 2.8], [2.76, 0.35, 1.4], [5.4, 0.12, 0.7]].forEach(([m, a, d]) => {
+    const o = actx.createOscillator(), g = actx.createGain();
+    o.frequency.value = freq * m; g.gain.setValueAtTime(0, t);
+    g.gain.linearRampToValueAtTime(a * vel, t + 0.008); g.gain.exponentialRampToValueAtTime(0.0001, t + d);
+    o.connect(g); g.connect(out); o.start(t); o.stop(t + d + 0.05);
+  });
+}
+function soundStep(){
+  balls.forEach((b, i) => {
+    const h = Math.floor(b.phi / Math.PI);
+    if (b.rest){ lastHalf[i] = null; return; }
+    if (lastHalf[i] !== null && h !== lastHalf[i] && soundOn){
+      const uneven = b.even === null ? 0 : 1 - b.even;
+      const f = TONE[element] * (i ? 3 : 1) / 2 * (1 + (Math.random() - 0.5) * 0.03 * uneven);
+      chime(f, 0.25 + 0.5 * Math.min(1, Math.abs(b.rate) / 1.5), i ? 0.35 : -0.35);
+    }
+    lastHalf[i] = h;
+  });
+}
+
+// ---------- loop ----------
+let now = 0, lastFrame = performance.now(), fade = 0;
+function frame(ms, once){
+  const dt = Math.max(0, Math.min(0.05, (ms - lastFrame)/1000)) * speed; lastFrame = ms; now += dt;
+  if (dt === 0){ if (!once) requestAnimationFrame(frame); return; }
+  const sub = Math.max(1, Math.round(speed*2));
+  for (let k = 0; k < sub; k++){
+    const t = now - dt + dt*(k+1)/sub;
+    if (source === "sim") simStep(t, dt/sub); else if (source === "hand") handStep(t); else serialStep(t);
+    stepElement();
+    if (!once) soundStep();
+    brushes.forEach((br, i) => drawBrush(i, balls[i], br, t, dt/sub));
+  }
+  // session: starts with turning; ends (seal, then to the wall) after 4 s with both at rest
+  const turning = balls.some(b => !b.rest);
+  if (turning && session.sealed){ archive(); fade = 1; clearScroll(); }   // picked up again: a fresh scroll
+  session.turns = Math.max(balls[0].total, balls[1].total);
+  if (turning){ session.active = true; session.restSince = null; }
+  else if (session.active){
+    if (session.restSince === null) session.restSince = now;
+    if (!session.sealed && now - session.restSince > 4 && session.turns >= 1){ seal(); session.sealed = true; }
+    if (session.sealed && now - session.restSince > 9){ archive(); fade = 1; clearScroll(); }
+  }
+  if (once) return;
+  draw();
+  requestAnimationFrame(frame);
+}
+function draw(){
+  ctx.drawImage(paperTex, 0, 0, W, H);
+  const ox = (W - S)/2, oy = (H - S)/2 - (wall.length ? Math.min(40, H*0.04) : 0);
+  ctx.drawImage(scroll, ox, oy, S, S);
+  if (fade > 0){ const [r,g,b] = T.bg; ctx.fillStyle = `rgba(${r},${g},${b},${fade})`; ctx.fillRect(0,0,W,H); fade = Math.max(0, fade - 0.02); }
+  // the wall of past scrolls, small, along the bottom
+  const k = Math.min(64, W/16);
+  wall.forEach((th, i) => { ctx.globalAlpha = 0.85 - i*0.05; ctx.drawImage(th, W/2 - (wall.length*k*1.1)/2 + i*k*1.1, H - k - 10, k, k); });
+  ctx.globalAlpha = 1;
+  const b0 = balls[0], b1 = balls[1];
+  const st = b0.rest && b1.rest ? "resting" : (b0.rest || b1.rest) ? "one ball" : "turning";
+  const dir = Math.abs(b0.rate) < 0.1 ? "–" : b0.rate > 0 ? "anticlockwise" : "clockwise";
+  document.getElementById("stats").textContent =
+    `${st} · ${dir}\nrpm  ${Math.abs(b0.rate*60).toFixed(0)} / ${Math.abs(b1.rate*60).toFixed(0)}\neven ${b0.even===null?"–":b0.even.toFixed(2)} / ${b1.even===null?"–":b1.even.toFixed(2)}\nturns ${session.turns} · ${ELEMENTS[element][0]} ${ELEMENTS[element][1]}\nink  ${brushes[0].ink.toFixed(2)} / ${brushes[1].ink.toFixed(2)}`;
+}
+
+// ---------- UI ----------
+document.querySelectorAll("[data-src]").forEach(bt => bt.onclick = async () => {
+  if (bt.dataset.src === "serial" && !(await openSerial())) return;
+  source = bt.dataset.src; document.querySelectorAll("[data-src]").forEach(x => x.classList.toggle("on", x === bt));
+  balls.forEach(b => { b.rest = true; b.tMark = null; b.periods = []; }); hand.last = null;
+});
+document.querySelectorAll("[data-theme]").forEach(bt => bt.onclick = () => {
+  T = theme[bt.dataset.theme]; document.documentElement.dataset.theme = bt.dataset.theme;
+  document.querySelectorAll("[data-theme]").forEach(x => x.classList.toggle("on", x === bt)); makePaper();
+});
+document.querySelectorAll("[data-path]").forEach(bt => bt.onclick = () => {
+  const changed = pathMode !== bt.dataset.path;
+  pathMode = bt.dataset.path;
+  if (changed && sctx){ if (session.turns) archive(); clearScroll(); } document.querySelectorAll("[data-path]").forEach(x => x.classList.toggle("on", x === bt));
+});
+document.getElementById("sound").onclick = (e) => {
+  if (!actx){ actx = new (window.AudioContext || window.webkitAudioContext)(); master = actx.createGain();
+    master.gain.value = +document.getElementById("vol").value * 0.6; master.connect(actx.destination); }
+  soundOn = !soundOn; e.target.textContent = soundOn ? "On" : "Off"; e.target.classList.toggle("on", soundOn);
+  if (soundOn) actx.resume();
+};
+document.getElementById("vol").oninput = (e) => { if (master) master.gain.value = +e.target.value * 0.6; };
+const sp = document.getElementById("speed"); sp.oninput = () => { speed = +sp.value; document.getElementById("speedv").textContent = speed + "×"; };
+document.getElementById("wipe").onclick = () => { wall.length = 0; try { localStorage.removeItem("taiji_wall"); } catch(e){} };
+document.getElementById("clear").onclick = () => { if (session.turns) archive(); clearScroll(); };
+document.getElementById("save").onclick = () => {
+  const out = document.createElement("canvas"); out.width = out.height = scroll.width; const o = out.getContext("2d");
+  const [r,g,b] = T.bg; o.fillStyle = `rgb(${r},${g},${b})`; o.fillRect(0,0,out.width,out.height); o.drawImage(scroll,0,0);
+  const a = document.createElement("a"); a.download = `taiji_ink_${Date.now()}.png`; a.href = out.toDataURL("image/png"); a.click();
+};
+addEventListener("keydown", e => { if (e.key === "h" || e.key === "H") document.getElementById("panel").classList.toggle("hidden");
+  if (e.key === "f" || e.key === "F") (document.fullscreenElement ? document.exitFullscreen() : document.documentElement.requestFullscreen()); });
+cv.addEventListener("pointermove", e => { if (source === "hand") handMove(e.clientX, e.clientY); });
+addEventListener("resize", resize);
+const Q = new URLSearchParams(location.search);
+if (Q.get("speed")){ speed = +Q.get("speed"); sp.value = speed; document.getElementById("speedv").textContent = speed + "×"; }
+{ const pb = document.querySelector(`[data-path="${Q.get("path")}"]`); if (pb) pb.click(); }
+{ const tb = document.querySelector(`[data-theme="${Q.get("theme")}"]`); if (tb) tb.click(); }
+if (Q.get("panel") === "0") document.getElementById("panel").classList.add("hidden");
+resize();
+if (Q.get("wall") !== "0") loadWall();
+if (Q.get("prerun")){                       // fast-forward the simulation (for stills and checks)
+  const n = Math.round(+Q.get("prerun") * 60), keep = speed; speed = 1;
+  for (let i = 0; i < n; i++) frame(lastFrame + 1000/60, true);
+  speed = keep; lastFrame = performance.now();
+}
+requestAnimationFrame(frame);
+</script>
+</body>
+</html>
